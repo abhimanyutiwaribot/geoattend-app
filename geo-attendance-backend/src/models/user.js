@@ -47,8 +47,8 @@ const UserTable = new mongoose.Schema({
     timestamps: true
 });
 
-UserTable.index({deviceID: 1});
-UserTable.index({email: 1});
+// UserTable.index({deviceID: 1});
+// UserTable.index({email: 1});
 
 const UserModel = mongoose.model("User", UserTable);
 module.exports = UserModel
