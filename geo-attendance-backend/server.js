@@ -2,6 +2,8 @@ const express = require("express");
 const connectDB = require("./db.js")
 const userRoutes = require("./src/routes/userroutes");
 const attendanceRouter = require("./src/routes/attendanceroute.js");
+const adminRoutes = require("./src/routes/adminRoutes.js");
+const adminAuthRoutes = require("./src/routes/adminAuthRoutes.js");
 const app = express();
 require("dotenv").config();
 
@@ -14,6 +16,8 @@ connectDB();
 // Routes
 app.use("/api/v1/user", userRoutes);
 app.use("/api/v1/attendance", attendanceRouter)
+app.use("/api/v1/admin/auth", adminAuthRoutes)
+app.use("/api/v1/admin", adminRoutes)
 
 // Health check route
 app.get("/health", (req, res) => {
