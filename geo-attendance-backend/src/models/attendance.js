@@ -2,7 +2,9 @@ const mongoose = require("mongoose");
 
 const AttendanceTable = new mongoose.Schema({
   userId: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
-  sessionId: { type: String, unique: true }, // For tracking entire sessions
+  sessionId: { type: String, unique: true,
+  sparse: true
+  }, // For tracking entire sessions
   status: { 
     type: String, 
     enum: ["tentative", "confirmed", "flagged", "completed", "invalid"], 
