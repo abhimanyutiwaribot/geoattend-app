@@ -5,7 +5,16 @@ const MotionTable = new mongoose.Schema({
   attendanceId: { type: mongoose.Schema.Types.ObjectId, ref: "Attendance", required: true },
   gyro: { type: [Number], default: [] },   // [x, y, z]
   accel: { type: [Number], default: [] },  // [x, y, z]
-  timestamp: { type: Date, default: Date.now }
+  // Add these for better analysis
+  motionType: { 
+    type: String, 
+    enum: ["walking", "stationary", "vehicle", "unknown"],
+    default: "unknown"
+  },
+  confidence: { type: Number, default: 0 }, // 0-100
+  deviceOrientation: { type: String } // portrait, landscape
 }, { timestamps: true });
 
-module.exports = mongoose.model("MotionLog", MotionTable);
+const MotionModel = mongoose.model("MotionLog", MotionTable);
+
+module.exports = MotionModel;

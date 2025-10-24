@@ -12,4 +12,6 @@ const OfficeGeoFenceTable = new mongoose.Schema({
     }
 }, {timestamps: true});
 
-module.exports = mongoose.model("OfficeGeofence", OfficeGeoFenceTable)
+const GeoFenceModel = mongoose.model("OfficeGeofence", OfficeGeoFenceTable)
+
+module.exports = GeoFenceModel;
