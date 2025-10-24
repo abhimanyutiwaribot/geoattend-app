@@ -3,7 +3,9 @@ const authMiddleware = require("../middleware/authmiddleware");
 const AttendanceModel = require("../models/attendance");
 const MotionModel = require("../models/motion");
 const GeofenceService = require("../services/geofenceService")
-const MotionAnalysisService = require("../services/motionAnalysisService")
+const MotionAnalysisService = require("../services/motionAnalysisService");
+const suspicionDetectionService = require("../services/suspicionDetectionService");
+const revalidationService = require("../services/revalidationService");
 const attendanceRouter = express.Router();
 
 attendanceRouter.post("/start", authMiddleware, async function (req, res) {
@@ -184,6 +186,73 @@ attendanceRouter.post("/end", authMiddleware, async function (req, res){
         res.status(500).json({
             success: false,
             message: "Error ending Attendance",
+            error: error.message
+        });
+    }
+});
+
+attendanceRouter.post("/check-suspicion", authMiddleware, async function (req, res) {
+    try{
+        const{ attendanceId } = req.body;
+        const userId = req.user._id;
+
+        const suspicionAnalysis = await suspicionDetectionService.analyzeSuspicion(attendanceId, userId);
+
+        let challenge = null;
+
+        if(suspicionAnalysis.requiresRevalidation){
+            challenge = await revalidationService.generateChallenge(
+                userId,
+                attendanceId,
+                "qr_scan"   // or "question", "pattern_match"
+            );
+        }
+
+        res.json({
+            success: true,
+            data: {
+                suspicionAnalysis,
+                challenge: challenge?.success ? challenge: null
+            }
+        });
+    } catch(error){
+            res.status(500).json({
+                success: false,
+                message: "Error checking suspicion",
+                error: error.message
+            });
+    }
+});
+
+// Add endpoint to handle challenge responses
+attendanceRouter.post("/validate-challenge", authMiddleware, async (req, res) => {
+    try {
+        const { challengeId, response } = req.body;
+        const userId = req.user._id;
+
+        const validationResult = await revalidationService.validateChallengeResponse(
+            challengeId, 
+            response, 
+            userId
+        );
+
+        if (validationResult.success && validationResult.isValid) {
+            // Update attendance status if challenge passed
+            await AttendanceModel.findOneAndUpdate(
+                { _id: req.body.attendanceId, userId: userId },
+                { 
+                    status: "confirmed",
+                    revalidationPassed: true,
+                    validationScore: 100 
+                }
+            );
+        }
+
+        res.json(validationResult);
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: "Error validating challenge",
             error: error.message
         });
     }
