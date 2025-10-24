@@ -139,7 +139,7 @@ authRoute.post("/login", async (req, res) => {
 
         res.status(200).json({
             success: true,
-            messgae: "Login successful",
+            message: "Login successful",
             data: {
                 user: {
                     id: user._id,

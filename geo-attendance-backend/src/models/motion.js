@@ -8,7 +8,7 @@ const MotionTable = new mongoose.Schema({
   // Add these for better analysis
   motionType: { 
     type: String, 
-    enum: ["walking", "stationary", "vehicle", "unknown"],
+    enum: ["walking", "stationary", "vehicle","light_movement", "unknown"],
     default: "unknown"
   },
   confidence: { type: Number, default: 0 }, // 0-100

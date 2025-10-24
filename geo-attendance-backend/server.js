@@ -13,7 +13,7 @@ connectDB();
 
 // Routes
 app.use("/api/v1/user", userRoutes);
-app.use("api/v1/attendance", attendanceRouter)
+app.use("/api/v1/attendance", attendanceRouter)
 
 // Health check route
 app.get("/health", (req, res) => {
@@ -24,13 +24,13 @@ app.get("/health", (req, res) => {
     });
 });
 
-// Handle undefined routes
-app.use("*", (req, res) => {
-    res.status(404).json({
-        success: false,
-        message: "Route not found"
-    });
-});
+// // Handle undefined routes
+// app.use("*", (req, res) => {
+//     res.status(404).json({
+//         success: false,
+//         message: "Route not found"
+//     });
+// });
 
 const PORT = process.env.PORT || 8000;
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
