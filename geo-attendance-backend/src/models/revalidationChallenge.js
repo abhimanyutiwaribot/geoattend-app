@@ -13,8 +13,8 @@ const RevalidationChallengeSchema = new mongoose.Schema({
     },
     challengeType: {
         type: String,
-        enum: ["location_photo", "qr_scan", "pattern_match", "question"],
-        default: "qr_scan"
+        enum: ["location_photo", "qr_scan", "pattern_match", "question", "wordle"],
+        default: "wordle"
     },
     challengeData: {
         // For QR scan
@@ -23,7 +23,11 @@ const RevalidationChallengeSchema = new mongoose.Schema({
         pattern: [String],
         // For question
         question: String,
-        correctAnswer: String
+        correctAnswer: String,
+        // For wordle
+        solutionWord: String,
+        wordLength: Number,
+        guesses: [String] // Track all guesses made
     },
     status: {
         type: String,

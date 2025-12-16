@@ -9,32 +9,60 @@ class SuspicionDetectionService {
             const suspicionReasons = [];
             let suspicionScore = 0;
 
-            // Get recent motion data (last 10 minutes)
+            const attendance = await AttendanceModel.findById(attendanceId);
+            if (!attendance) {
+                return {
+                    isSuspicious: false,
+                    suspicionScore: 0,
+                    reasons: [],
+                    requiresRevalidation: false
+                };
+            }
+
+            const sessionDuration = (Date.now() - new Date(attendance.startTime)) / (1000 * 60); // minutes
+
+            // 1. Time-based random checks (every 20-30 minutes)
+            const timeBasedResult = this.checkTimeBasedRevalidation(sessionDuration);
+            if (timeBasedResult.requiresCheck) {
+                suspicionReasons.push("Random presence check");
+                suspicionScore += 50; // High enough to trigger
+            }
+
+            // 2. Check session patterns (very short or very long sessions)
+            const sessionPatternResult = this.checkSessionPatterns(attendance, sessionDuration);
+            if (sessionPatternResult.isSuspicious) {
+                suspicionReasons.push(sessionPatternResult.reason);
+                suspicionScore += sessionPatternResult.score;
+            }
+
+            // 3. Check motion only in first 10 minutes (initial validation window)
+            if (sessionDuration <= 10) {
+                const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000);
+                const recentMotions = await MotionModel.find({
+                    attendanceId: attendanceId,
+                    timestamp: { $gte: tenMinutesAgo }
+                }).sort({ timestamp: 1 });
+
+                const initialMotionResult = this.checkInitialMotion(recentMotions, sessionDuration);
+                if (initialMotionResult.isSuspicious) {
+                    suspicionReasons.push(initialMotionResult.reason);
+                    suspicionScore += initialMotionResult.score;
+                }
+            }
+
+            // 4. Check for unusual motion patterns (if any motion data exists)
             const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000);
             const recentMotions = await MotionModel.find({
                 attendanceId: attendanceId,
                 timestamp: { $gte: tenMinutesAgo }
             }).sort({ timestamp: 1 });
 
-            // 1. Check for prolonged inactivity
-            const inactivityResult = this.checkProlongedInactivity(recentMotions);
-            if (inactivityResult.isSuspicious) {
-                suspicionReasons.push(inactivityResult.reason);
-                suspicionScore += inactivityResult.score;
-            }
-
-            // 2. Check for unusual motion patterns
-            const motionPatternResult = this.checkUnusualMotionPatterns(recentMotions);
-            if (motionPatternResult.isSuspicious) {
-                suspicionReasons.push(motionPatternResult.reason);
-                suspicionScore += motionPatternResult.score;
-            }
-
-            // 3. Check location consistency (if we had multiple location samples)
-            const locationResult = await this.checkLocationConsistency(attendanceId);
-            if (locationResult.isSuspicious) {
-                suspicionReasons.push(locationResult.reason);
-                suspicionScore += locationResult.score;
+            if (recentMotions.length > 0) {
+                const motionPatternResult = this.checkUnusualMotionPatterns(recentMotions);
+                if (motionPatternResult.isSuspicious) {
+                    suspicionReasons.push(motionPatternResult.reason);
+                    suspicionScore += motionPatternResult.score;
+                }
             }
 
             return {
@@ -54,28 +82,76 @@ class SuspicionDetectionService {
         }
     }
 
-    // Check for prolonged inactivity (no motion for 5+ minutes)
-    checkProlongedInactivity(motionLogs) {
-        if (motionLogs.length === 0) {
+    // Time-based random revalidation (every 20-30 minutes)
+    checkTimeBasedRevalidation(sessionDurationMinutes) {
+        // Trigger random check every 25 minutes
+        const checkInterval = 25; // minutes
+        
+        // Check if we've passed a check interval threshold
+        // This ensures checks at: 25min, 50min, 75min, etc.
+        const intervalsPassed = Math.floor(sessionDurationMinutes / checkInterval);
+        const timeSinceLastInterval = sessionDurationMinutes % checkInterval;
+        
+        // Trigger if we're within 2 minutes after an interval (to account for timing variations)
+        // This means: 23-27min, 48-52min, 73-77min, etc.
+        if (intervalsPassed > 0 && timeSinceLastInterval >= checkInterval - 2 && timeSinceLastInterval <= checkInterval + 2) {
+            return { requiresCheck: true };
+        }
+        
+        return { requiresCheck: false };
+    }
+
+    // Check session patterns (suspicious durations)
+    checkSessionPatterns(attendance, sessionDurationMinutes) {
+        // Very short sessions (< 5 minutes) might be suspicious
+        if (sessionDurationMinutes < 5 && attendance.status === "completed") {
             return {
                 isSuspicious: true,
-                reason: "No motion data recorded for 10 minutes",
-                score: 40
+                reason: "Very short session detected",
+                score: 25
             };
         }
 
-        // Check if we have any active motion in last 5 minutes
-        const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000);
-        const recentActiveMotions = motionLogs.filter(log => 
-            new Date(log.timestamp) >= fiveMinutesAgo && 
-            this.isActiveMotion(log)
-        );
-
-        if (recentActiveMotions.length === 0) {
+        // Extremely long sessions (> 12 hours) might be suspicious
+        if (sessionDurationMinutes > 12 * 60) {
             return {
                 isSuspicious: true,
-                reason: "No significant movement detected in last 5 minutes",
-                score: 30
+                reason: "Unusually long session detected",
+                score: 20
+            };
+        }
+
+        return { isSuspicious: false, reason: "", score: 0 };
+    }
+
+    // Check motion only in initial window (first 10 minutes)
+    checkInitialMotion(motionLogs, sessionDurationMinutes) {
+        if (sessionDurationMinutes > 10) {
+            return { isSuspicious: false, reason: "", score: 0 };
+        }
+
+        if (motionLogs.length === 0) {
+            // In first 5 minutes, expect some motion
+            if (sessionDurationMinutes <= 5) {
+                return {
+                    isSuspicious: true,
+                    reason: "No motion detected during initial check-in period",
+                    score: 30
+                };
+            }
+        }
+
+        // Check if we have any active motion in first few minutes
+        const firstFewMinutes = motionLogs.filter(log => {
+            const logTime = (Date.now() - new Date(log.timestamp)) / (1000 * 60);
+            return logTime <= 5 && this.isActiveMotion(log);
+        });
+
+        if (firstFewMinutes.length === 0 && sessionDurationMinutes <= 5) {
+            return {
+                isSuspicious: true,
+                reason: "No significant movement during initial period",
+                score: 25
             };
         }
 

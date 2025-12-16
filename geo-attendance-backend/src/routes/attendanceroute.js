@@ -204,7 +204,7 @@ attendanceRouter.post("/check-suspicion", authMiddleware, async function (req, r
             challenge = await revalidationService.generateChallenge(
                 userId,
                 attendanceId,
-                "qr_scan"   // or "question", "pattern_match"
+                "wordle"   // Fun Wordle-style challenge
             );
         }
 
@@ -266,7 +266,7 @@ attendanceRouter.get("/active-session", authMiddleware, async(req, res) => {
             userId,
             status: { $in: ["tentative", "confirmed", "flagged"]}
         }).sort({ startTime: -1})
-
+        
         if (!activeSession) {
             // Use 204 No Content to indicate success but no data (recommended for GET with no results)
             return res.status(204).json({
@@ -294,6 +294,40 @@ attendanceRouter.get("/active-session", authMiddleware, async(req, res) => {
             error: error.message
         });
     }
-})
+});
+
+attendanceRouter.get("/my", authMiddleware, async (req, res) => {
+    try {
+        const userId = req.user._id;
+        const { page = 1, limit = 20 } = req.query;
+
+        const query = { userId };
+
+        const attendances = await AttendanceModel.find(query)
+            .sort({ startTime: -1 })
+            .limit(limit * 1)
+            .skip((page - 1) * limit);
+
+        const total = await AttendanceModel.countDocuments(query);
+
+        res.json({
+            success: true,
+            data: {
+                attendances,
+                pagination: {
+                    current: parseInt(page),
+                    total: Math.ceil(total / limit),
+                    totalRecords: total
+                }
+            }
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: "Error fetching attendance history",
+            error: error.message
+        });
+    }
+});
 
 module.exports = attendanceRouter;
