@@ -258,5 +258,42 @@ attendanceRouter.post("/validate-challenge", authMiddleware, async (req, res) =>
     }
 });
 
+attendanceRouter.get("/active-session", authMiddleware, async(req, res) => {
+    try {
+        const userId = req.user._id;
+
+        const activeSession = await AttendanceModel.findOne({
+            userId,
+            status: { $in: ["tentative", "confirmed", "flagged"]}
+        }).sort({ startTime: -1})
+
+        if (!activeSession) {
+            // Use 204 No Content to indicate success but no data (recommended for GET with no results)
+            return res.status(204).json({
+                success: true,
+                message: "No active attendance session found"
+            });
+        }
+
+        res.status(200).json({
+            success: true,
+            message: "Active attendance session retrieved",
+            data: {
+                attendanceId: activeSession._id,
+                status: activeSession.status,
+                startTime: activeSession.startTime,
+                validationScore: activeSession.validationScore,
+                location: activeSession.location
+            }
+        });
+
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: "Error retrieving active session",
+            error: error.message
+        });
+    }
+})
 
 module.exports = attendanceRouter;
