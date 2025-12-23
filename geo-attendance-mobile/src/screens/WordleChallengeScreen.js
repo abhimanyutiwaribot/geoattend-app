@@ -14,6 +14,10 @@ export default function WordleChallengeScreen({ route, navigation }) {
   const [failed, setFailed] = useState(false);
 
   const handleSubmitGuess = async () => {
+    if (solved || failed || attemptsLeft <= 0) {
+      return;
+    }
+
     const guess = currentGuess.toUpperCase().trim();
     
     if (guess.length !== wordLength) {
@@ -43,7 +47,7 @@ export default function WordleChallengeScreen({ route, navigation }) {
         setAttemptsLeft(remaining || 0);
         
         setTimeout(() => {
-          Alert.alert('Success! 🎉', 'Challenge completed! Your session is secured.', [
+          Alert.alert('Success! 🎉', 'Challenge completed!.', [
             { text: 'OK', onPress: () => navigation.goBack() }
           ]);
         }, 500);
@@ -54,14 +58,17 @@ export default function WordleChallengeScreen({ route, navigation }) {
         setGuesses(newGuesses);
         setResults(newResults);
         setCurrentGuess('');
-        setAttemptsLeft(remaining || attemptsLeft - 1);
+        const newAttemptsLeft = Math.max(remaining ?? attemptsLeft - 1, 0);
+        setAttemptsLeft(newAttemptsLeft);
 
-        if (remaining === 0 || error === 'Max attempts exceeded') {
+        if (newAttemptsLeft <= 0 || error === 'Max attempts exceeded') {
           setFailed(true);
           setTimeout(() => {
-            Alert.alert('Challenge Failed', 'Maximum attempts reached. Your session may be flagged for review.', [
-              { text: 'OK', onPress: () => navigation.goBack() }
-            ]);
+            Alert.alert(
+              'Challenge Failed',
+              `Maximum attempts reached. You can continue your session, but this challenge wasn't passed.`,
+              [{ text: 'OK', onPress: () => navigation.goBack() }]
+            );
           }, 500);
         }
       }
