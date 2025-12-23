@@ -1,9 +1,10 @@
 import * as Notifications from 'expo-notifications';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // Configure notification handler
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
-    shouldShowBanner: true,
+    shouldShowAlert: true,
     shouldPlaySound: true,
     shouldSetBadge: false,
   }),
@@ -43,5 +44,41 @@ export async function scheduleLocalNotification(title, body, data = {}) {
 // Cancel all notifications
 export async function cancelAllNotifications() {
   await Notifications.cancelAllScheduledNotificationsAsync();
+}
+
+// --- Local in-app notification storage for listing in UI ---
+const LOCAL_NOTES_KEY = 'localNotifications';
+
+export async function saveLocalNotificationEntry(entry) {
+  try {
+    const raw = await AsyncStorage.getItem(LOCAL_NOTES_KEY);
+    const list = raw ? JSON.parse(raw) : [];
+    const newList = [entry, ...list].slice(0, 50); // keep latest 50
+    await AsyncStorage.setItem(LOCAL_NOTES_KEY, JSON.stringify(newList));
+    return newList;
+  } catch (e) {
+    console.log('saveLocalNotificationEntry error', e);
+    return null;
+  }
+}
+
+export async function getLocalNotifications() {
+  try {
+    const raw = await AsyncStorage.getItem(LOCAL_NOTES_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch (e) {
+    console.log('getLocalNotifications error', e);
+    return [];
+  }
+}
+
+export async function clearLocalNotifications() {
+  try {
+    await AsyncStorage.removeItem(LOCAL_NOTES_KEY);
+    return [];
+  } catch (e) {
+    console.log('clearLocalNotifications error', e);
+    return [];
+  }
 }
 
