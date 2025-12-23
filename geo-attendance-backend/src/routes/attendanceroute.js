@@ -191,6 +191,40 @@ attendanceRouter.post("/end", authMiddleware, async function (req, res){
     }
 });
 
+// Check current geofence status for given coordinates
+attendanceRouter.post("/geofence-status", authMiddleware, async function (req, res) {
+    try {
+        const { lat, lng } = req.body;
+        if (typeof lat !== "number" || typeof lng !== "number") {
+            return res.status(400).json({
+                success: false,
+                message: "lat and lng are required numbers"
+            });
+        }
+
+        const geoFenceCheck = await GeofenceService.isWithinGeofence(lat, lng);
+
+        res.json({
+            success: true,
+            data: {
+                isWithin: geoFenceCheck.isWithin,
+                distance: geoFenceCheck.distance,
+                geofence: geoFenceCheck.geofence ? {
+                    name: geoFenceCheck.geofence.name,
+                    radius: geoFenceCheck.geofence.radius,
+                    center: geoFenceCheck.geofence.center
+                } : null
+            }
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: "Error checking geofence status",
+            error: error.message
+        });
+    }
+});
+
 attendanceRouter.post("/check-suspicion", authMiddleware, async function (req, res) {
     try{
         const{ attendanceId } = req.body;
