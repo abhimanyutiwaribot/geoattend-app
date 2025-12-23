@@ -6,7 +6,7 @@ import * as Notifications from 'expo-notifications';
 import { useNavigation } from '@react-navigation/native';
 import { api } from '../api/client';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { registerForPushNotificationsAsync, scheduleLocalNotification } from '../utils/notifications';
+import { registerForPushNotificationsAsync, scheduleLocalNotification, saveLocalNotificationEntry } from '../utils/notifications';
 
 export default function HomeScreen() {
   const navigation = useNavigation();
@@ -19,6 +19,7 @@ export default function HomeScreen() {
   const [currentLocation, setCurrentLocation] = useState(null);
   const [locationStatus, setLocationStatus] = useState('idle');
   const [lastChallengeId, setLastChallengeId] = useState(null); // Track last challenge shown
+  const [geofenceStatus, setGeofenceStatus] = useState(null);
 
   useEffect(() => {
     fetchActiveSession();
@@ -56,14 +57,14 @@ export default function HomeScreen() {
       if (motionSub) {
         motionSub.remove();
       }
-      if (notificationListener.current) {
-        Notifications.removeNotificationSubscription(notificationListener.current);
+      if (notificationListener.current?.remove) {
+        notificationListener.current.remove();
       }
-      if (responseListener.current) {
-        Notifications.removeNotificationSubscription(responseListener.current);
+      if (responseListener.current?.remove) {
+        responseListener.current.remove();
       }
     };
-  }, [navigation]);
+  }, [navigation, motionSub]);
 
   // Periodically refresh location while a session is active (e.g. every 60 seconds)
   useEffect(() => {
@@ -78,6 +79,28 @@ export default function HomeScreen() {
 
     return () => clearInterval(id);
   }, [session?.attendanceId]);
+
+  // Live location/geofence polling before attendance starts
+  useEffect(() => {
+    if (session?.attendanceId) {
+      return;
+    }
+    if (locationStatus !== 'granted') {
+      return;
+    }
+
+    const id = setInterval(async () => {
+      try {
+        const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+        setCurrentLocation(loc.coords);
+        await checkGeofenceStatus(loc.coords);
+      } catch (e) {
+        // ignore polling errors
+      }
+    }, 15000); // every 15 seconds
+
+    return () => clearInterval(id);
+  }, [session?.attendanceId, locationStatus]);
 
   // Periodic suspicion check (every 20-30 minutes) while session is active
   useEffect(() => {
@@ -111,6 +134,20 @@ export default function HomeScreen() {
               }
             );
 
+            // Save to local list for Notifications tab
+            await saveLocalNotificationEntry({
+              id: challenge.challengeId,
+              title: 'Take a quick brain break ✨',
+              body: 'Play a short puzzle to keep your session active.',
+              timestamp: Date.now(),
+              data: {
+                challengeId: challenge.challengeId,
+                attendanceId: session.attendanceId,
+                wordLength: challenge.challengeData?.wordLength || 4,
+                maxAttempts: challenge.challengeData?.maxAttempts || 4,
+              },
+            });
+
             // Also navigate directly if app is open
             navigation.navigate('WordleChallenge', {
               challengeId: challenge.challengeId,
@@ -134,7 +171,7 @@ export default function HomeScreen() {
     // Then check every 25 minutes
     const intervalId = setInterval(() => {
       checkSuspicion();
-    }, 30 * 1000); // 25 minutes
+    }, 25 * 60 * 1000); // 25 minutes
 
       return () => {
         clearTimeout(initialTimeout);
@@ -147,8 +184,13 @@ export default function HomeScreen() {
       setCheckingSession(true);
       const res = await api.get('/attendance/active-session');
       if (res.status === 200 && res.data?.data) {
-        setSession(res.data.data);
-        startMotionValidation(res.data.data.attendanceId);
+        // If we already have this session running, do not restart motion sampling
+        if (session?.attendanceId !== res.data.data.attendanceId) {
+          setSession(res.data.data);
+          startMotionValidation(res.data.data.attendanceId);
+        } else {
+          setSession(res.data.data);
+        }
       } else {
         setSession(null);
       }
@@ -206,10 +248,23 @@ export default function HomeScreen() {
       const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High });
       setCurrentLocation(loc.coords);
       setLocationStatus('granted');
+      await checkGeofenceStatus(loc.coords);
       return loc;
     } catch (e) {
       setLocationStatus('error');
       return null;
+    }
+  };
+
+  const checkGeofenceStatus = async (coords) => {
+    try {
+      const res = await api.post('/attendance/geofence-status', {
+        lat: coords.latitude,
+        lng: coords.longitude,
+      });
+      setGeofenceStatus(res.data.data);
+    } catch (e) {
+      // ignore for now
     }
   };
 
@@ -255,6 +310,11 @@ export default function HomeScreen() {
     Accelerometer.setUpdateInterval(1000);
     Gyroscope.setUpdateInterval(1000);
 
+    // Clear any previous subscriptions/intervals before starting new ones
+    if (motionSub && motionSub.remove) {
+      motionSub.remove();
+    }
+
     const accelSub = Accelerometer.addListener((data) => {
       accelData.x = data.x;
       accelData.y = data.y;
@@ -271,6 +331,7 @@ export default function HomeScreen() {
       remove: () => {
         accelSub && accelSub.remove();
         gyroSub && gyroSub.remove();
+        clearInterval(intervalId);
       },
     });
 
@@ -300,14 +361,14 @@ export default function HomeScreen() {
     }, 30000);
 
     // attach interval cleanup
-    setMotionSub((prev) => ({
-      ...prev,
+    setMotionSub({
       remove: () => {
         accelSub && accelSub.remove();
         gyroSub && gyroSub.remove();
         clearInterval(intervalId);
       },
-    }));
+      intervalId,
+    });
   };
 
   const handleEndAttendance = async () => {
@@ -329,13 +390,74 @@ export default function HomeScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <Text style={styles.title}>Attendance</Text>
+      <Text style={styles.title}>Live presence</Text>
       <Text style={styles.subtitle}>
-        {session
-          ? `Active since ${new Date(session.startTime).toLocaleTimeString()}`
-          : 'Mark your presence inside office geofence'}
+        {geofenceStatus
+          ? geofenceStatus.isWithin
+            ? 'You are inside the office geofence.'
+            : 'You are currently outside the office area.'
+          : 'We use your location to check if you are at the office.'}
       </Text>
 
+      {/* Geofence status card */}
+      <View
+        style={[
+          styles.statusCard,
+          geofenceStatus
+            ? geofenceStatus.isWithin
+              ? styles.statusCardInside
+              : styles.statusCardOutside
+            : styles.statusCardIdle,
+        ]}
+      >
+        <View style={styles.statusHeader}>
+          <View
+            style={[
+              styles.statusPill,
+              geofenceStatus
+                ? geofenceStatus.isWithin
+                  ? styles.statusPillInside
+                  : styles.statusPillOutside
+                : styles.statusPillIdle,
+            ]}
+          >
+            <Text style={styles.statusPillText}>
+              {geofenceStatus
+                ? geofenceStatus.isWithin
+                  ? 'INSIDE OFFICE'
+                  : 'OUTSIDE OFFICE'
+                : 'LOCATION'}
+            </Text>
+          </View>
+          {currentLocation && (
+            <Text style={styles.statusCoords}>
+              {currentLocation.latitude.toFixed(4)}, {currentLocation.longitude.toFixed(4)}
+            </Text>
+          )}
+        </View>
+        <Text style={styles.statusDistance}>
+          {geofenceStatus
+            ? geofenceStatus.distance != null
+              ? geofenceStatus.isWithin
+                ? `~${Math.max(0, Math.round(geofenceStatus.distance))} m from office center`
+                : `~${Math.round(geofenceStatus.distance)} m away from office`
+              : 'Distance not available'
+            : locationStatus === 'requesting'
+            ? 'Checking your location...'
+            : 'Tap refresh to update your location.'}
+        </Text>
+        <TouchableOpacity
+          style={styles.refreshButton}
+          onPress={readCurrentLocation}
+          disabled={locationStatus === 'requesting'}
+        >
+          <Text style={styles.refreshText}>
+            {locationStatus === 'requesting' ? 'Updating location…' : 'Refresh location'}
+          </Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* Session status card */}
       {checkingSession ? (
         <View style={styles.infoCard}>
           <ActivityIndicator color="#22c55e" />
@@ -343,7 +465,16 @@ export default function HomeScreen() {
         </View>
       ) : session ? (
         <View style={styles.infoCard}>
-          <Text style={styles.infoLabel}>Status: <Text style={styles.infoValue}>{session.status}</Text></Text>
+          <Text style={styles.infoLabel}>
+            Session status:{' '}
+            <Text style={styles.infoValue}>{session.status}</Text>
+          </Text>
+          <Text style={styles.infoLabel}>
+            Started at:{' '}
+            <Text style={styles.infoValue}>
+              {new Date(session.startTime).toLocaleTimeString()}
+            </Text>
+          </Text>
           <Text style={styles.infoLabel}>
             Validation score:{' '}
             <Text style={styles.infoValue}>{session.validationScore ?? 0}</Text>
@@ -351,44 +482,27 @@ export default function HomeScreen() {
         </View>
       ) : null}
 
-      <View style={styles.infoCard}>
-        <Text style={styles.infoLabel}>Location debug</Text>
-        <Text style={styles.infoText}>
-          Status:{' '}
-          <Text style={styles.infoValue}>
-            {locationStatus === 'idle'
-              ? 'Not checked'
-              : locationStatus === 'requesting'
-              ? 'Requesting...'
-              : locationStatus}
-          </Text>
-        </Text>
-        <Text style={styles.infoText}>
-          Coords:{' '}
-          <Text style={styles.infoValue}>
-            {currentLocation
-              ? `${currentLocation.latitude.toFixed(5)}, ${currentLocation.longitude.toFixed(5)}`
-              : 'n/a'}
-          </Text>
-        </Text>
-        <TouchableOpacity
-          style={[styles.button, styles.smallButton]}
-          onPress={readCurrentLocation}
-          disabled={locationStatus === 'requesting'}
-        >
-          <Text style={styles.buttonSecondaryText}>
-            {locationStatus === 'requesting' ? 'Getting location...' : 'Check location'}
-          </Text>
-        </TouchableOpacity>
-      </View>
-
       {!session ? (
         <TouchableOpacity
-          style={[styles.button, styles.primary]}
+          style={[
+            styles.button,
+            styles.primary,
+            geofenceStatus && !geofenceStatus.isWithin && styles.buttonDisabled,
+          ]}
           onPress={handleStartAttendance}
-          disabled={loading}
+          disabled={
+            loading ||
+            (geofenceStatus && geofenceStatus.isWithin === false) ||
+            locationStatus !== 'granted'
+          }
         >
-          <Text style={styles.buttonText}>{loading ? 'Starting...' : 'Start Attendance'}</Text>
+          <Text style={styles.buttonText}>
+            {loading
+              ? 'Starting...'
+              : geofenceStatus && geofenceStatus.isWithin === false
+              ? 'Move closer to office to start'
+              : 'Start Attendance'}
+          </Text>
         </TouchableOpacity>
       ) : (
         <TouchableOpacity
@@ -418,7 +532,75 @@ const styles = StyleSheet.create({
   subtitle: {
     fontSize: 14,
     color: '#9ca3af',
-    marginBottom: 24,
+    marginBottom: 18,
+  },
+  statusCard: {
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 16,
+  },
+  statusCardInside: {
+    backgroundColor: '#022c22',
+    borderWidth: 1,
+    borderColor: '#16a34a',
+  },
+  statusCardOutside: {
+    backgroundColor: '#2b0b0b',
+    borderWidth: 1,
+    borderColor: '#ef4444',
+  },
+  statusCardIdle: {
+    backgroundColor: '#020617',
+    borderWidth: 1,
+    borderColor: '#1f2937',
+  },
+  statusHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  statusPill: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 999,
+  },
+  statusPillInside: {
+    backgroundColor: '#22c55e33',
+  },
+  statusPillOutside: {
+    backgroundColor: '#f9731633',
+  },
+  statusPillIdle: {
+    backgroundColor: '#4b556333',
+  },
+  statusPillText: {
+    fontSize: 12,
+    fontWeight: '700',
+    letterSpacing: 1,
+    color: '#e5e7eb',
+  },
+  statusCoords: {
+    fontSize: 12,
+    color: '#9ca3af',
+  },
+  statusDistance: {
+    fontSize: 14,
+    color: '#e5e7eb',
+    marginBottom: 12,
+  },
+  refreshButton: {
+    alignSelf: 'flex-start',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: '#4b5563',
+  },
+  refreshText: {
+    color: '#e5e7eb',
+    fontSize: 13,
+    fontWeight: '500',
   },
   button: {
     paddingVertical: 14,
@@ -462,6 +644,9 @@ const styles = StyleSheet.create({
   infoValue: {
     color: '#e5e7eb',
     fontWeight: '600',
+  },
+  buttonDisabled: {
+    backgroundColor: '#4b5563',
   },
   smallButton: {
     marginTop: 12,
