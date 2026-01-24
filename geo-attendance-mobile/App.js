@@ -5,7 +5,7 @@ import { createMaterialTopTabNavigator } from '@react-navigation/material-top-ta
 import * as LocalAuthentication from 'expo-local-authentication';
 import { ActivityIndicator, View, Text, StyleSheet, Platform, Dimensions } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
-import { Ionicons } from '@expo/vector-icons'; 
+import { Ionicons } from '@expo/vector-icons';
 
 import LoginScreen from './src/screens/LoginScreen';
 import RegisterScreen from './src/screens/RegisterScreen';
@@ -14,6 +14,7 @@ import HistoryScreen from './src/screens/HistoryScreen';
 import ProfileScreen from './src/screens/ProfileScreen';
 import NotificationsScreen from './src/screens/NotificationsScreen';
 import WordleChallengeScreen from './src/screens/WordleChallengeScreen';
+import CognitiveChallengeScreen from './src/screens/CognitiveChallengeScreen';
 import { AuthProvider, useAuth } from './src/context/AuthContext';
 
 const Tab = createMaterialTopTabNavigator();
@@ -36,7 +37,7 @@ function Tabs() {
             alignItems: 'center',
             height: 64,
           },
-          
+
           tabBarContentContainerStyle: {
             alignItems: 'center',
             justifyContent: 'center',
@@ -80,6 +81,7 @@ function RootNavigator() {
         <>
           <Stack.Screen name="Tabs" component={Tabs} />
           <Stack.Screen name="WordleChallenge" component={WordleChallengeScreen} />
+          <Stack.Screen name="CognitiveChallenge" component={CognitiveChallengeScreen} />
         </>
       ) : (
         <>
