@@ -68,7 +68,7 @@ class RevalidationService {
     generateChallengeData(challengeType) {
         switch (challengeType) {
             case "wordle":
-                // 4-letter words for simplicity (college project)
+                // 4-letter words 
                 const wordList = [
                     "WORK", "DESK", "TEAM", "CODE", "TASK", "MEET", "TIME", "PLAN",
                     "GOAL", "DATA", "FILE", "USER", "ROLE", "MODE", "PAGE", "SITE",

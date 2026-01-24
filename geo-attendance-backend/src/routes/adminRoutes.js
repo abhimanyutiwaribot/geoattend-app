@@ -239,7 +239,7 @@ adminRoutes.get("/geofences", requirePermission("canManageGeofence"), async (req
 
 adminRoutes.post("/geofences", requirePermission("canManageGeofence"), async (req, res) => {
     try {
-        const { name, center, radius = 100 } = req.body;
+        const { name, center, radius } = req.body;
 
         const geofence = new GeoFenceModel({
             name,

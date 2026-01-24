@@ -6,23 +6,30 @@ const GeofenceService = require("../services/geofenceService")
 const MotionAnalysisService = require("../services/motionAnalysisService");
 const suspicionDetectionService = require("../services/suspicionDetectionService");
 const revalidationService = require("../services/revalidationService");
+const MockLocationDetectionService = require("../services/mockLocationDetectionService");
+const CognitiveService = require("../services/cognitiveService");
+const CognitiveChallenge = require("../models/cognitiveChallenge");
 const attendanceRouter = express.Router();
 
+const mockLocationService = new MockLocationDetectionService();
+const cognitiveService = new CognitiveService();
+
+
 attendanceRouter.post("/start", authMiddleware, async function (req, res) {
-    try{
-        const {lat , lng} = req.body;
+    try {
+        const { lat, lng } = req.body;
         const userId = req.user._id;
 
         // todo : Add geofence validation logic here
         const geoFenceCheck = await GeofenceService.isWithinGeofence(lat, lng)
 
-        if(!geoFenceCheck.isWithin){
+        if (!geoFenceCheck.isWithin) {
             return res.status(400).json({
                 success: false,
                 message: "You are not within the office geofence",
                 error: "OUTSIDE_GEOFENCE",
-                data : {
-                    requiredRadius : 100, //meters
+                data: {
+                    requiredRadius: 100, //meters
                     userDistance: geoFenceCheck.distance
                 }
             })
@@ -48,7 +55,7 @@ attendanceRouter.post("/start", authMiddleware, async function (req, res) {
 
         const attendance = new AttendanceModel({
             userId,
-            location: {lat, lng},
+            location: { lat, lng },
             status: "tentative",
             startTime: new Date()
         })
@@ -68,7 +75,7 @@ attendanceRouter.post("/start", authMiddleware, async function (req, res) {
                 }
             }
         })
-    }catch (error){
+    } catch (error) {
         res.status(500).json({
             success: false,
             message: "Error starting attendance",
@@ -78,8 +85,8 @@ attendanceRouter.post("/start", authMiddleware, async function (req, res) {
 });
 
 
-attendanceRouter.post("/validate",  authMiddleware, async function (req , res) {
-    try{
+attendanceRouter.post("/validate", authMiddleware, async function (req, res) {
+    try {
         const { attendanceId, gyro, accel } = req.body;
 
         const userId = req.user._id;
@@ -89,7 +96,7 @@ attendanceRouter.post("/validate",  authMiddleware, async function (req , res) {
             userId: userId
         });
 
-        if(!attendance){
+        if (!attendance) {
             return res.status(404).json({
                 success: false,
                 message: "Attendance session not found"
@@ -109,17 +116,17 @@ attendanceRouter.post("/validate",  authMiddleware, async function (req , res) {
 
         await motionLog.save();
 
-        if(motionAnalysis.isActive && attendance.status === "tentative"){
+        if (motionAnalysis.isActive && attendance.status === "tentative") {
             attendance.status = "confirmed",
-            await attendance.save();
+                await attendance.save();
         }
 
-         // Calculate validation score (average of last 10 readings)
+        // Calculate validation score (average of last 10 readings)
         const recentMotions = await MotionModel.find({
             attendanceId: attendanceId
         }).sort({ timestamp: -1 }).limit(10);
 
-        const avgConfidence = recentMotions.length > 0 
+        const avgConfidence = recentMotions.length > 0
             ? recentMotions.reduce((sum, m) => sum + (m.confidence || 0), 0) / recentMotions.length
             : 0;
 
@@ -136,7 +143,7 @@ attendanceRouter.post("/validate",  authMiddleware, async function (req , res) {
                 validationScore: attendance.validationScore
             }
         });
-    } catch (error){
+    } catch (error) {
         res.status(500).json({
             success: false,
             message: "Error validating presence",
@@ -146,8 +153,8 @@ attendanceRouter.post("/validate",  authMiddleware, async function (req , res) {
 });
 
 
-attendanceRouter.post("/end", authMiddleware, async function (req, res){
-    try{
+attendanceRouter.post("/end", authMiddleware, async function (req, res) {
+    try {
         const { attendanceId } = req.body;
         const userId = req.user._id;
 
@@ -156,7 +163,7 @@ attendanceRouter.post("/end", authMiddleware, async function (req, res){
             userId: userId
         });
 
-        if(!attendance) {
+        if (!attendance) {
             res.status(404).json({
                 success: false,
                 message: "Attendance session not found"
@@ -167,22 +174,22 @@ attendanceRouter.post("/end", authMiddleware, async function (req, res){
         attendance.status = "completed";
 
         //Calculate duration
-         const duration = (attendance.endTime - attendance.startTime) / (1000 * 60); // minutes
+        const duration = (attendance.endTime - attendance.startTime) / (1000 * 60); // minutes
 
         attendance.totalDuration = duration;
 
-         await attendance.save();
+        await attendance.save();
 
-         res.json({
+        res.json({
             success: true,
             message: "attendance session ended",
-            data : {
-                attendanceId : attendance._id,
-                duration : duration,
+            data: {
+                attendanceId: attendance._id,
+                duration: duration,
                 status: attendance.status
             }
-         });
-    } catch(error){
+        });
+    } catch (error) {
         res.status(500).json({
             success: false,
             message: "Error ending Attendance",
@@ -226,15 +233,15 @@ attendanceRouter.post("/geofence-status", authMiddleware, async function (req, r
 });
 
 attendanceRouter.post("/check-suspicion", authMiddleware, async function (req, res) {
-    try{
-        const{ attendanceId } = req.body;
+    try {
+        const { attendanceId } = req.body;
         const userId = req.user._id;
 
         const suspicionAnalysis = await suspicionDetectionService.analyzeSuspicion(attendanceId, userId);
 
         let challenge = null;
 
-        if(suspicionAnalysis.requiresRevalidation){
+        if (suspicionAnalysis.requiresRevalidation) {
             challenge = await revalidationService.generateChallenge(
                 userId,
                 attendanceId,
@@ -246,15 +253,15 @@ attendanceRouter.post("/check-suspicion", authMiddleware, async function (req, r
             success: true,
             data: {
                 suspicionAnalysis,
-                challenge: challenge?.success ? challenge: null
+                challenge: challenge?.success ? challenge : null
             }
         });
-    } catch(error){
-            res.status(500).json({
-                success: false,
-                message: "Error checking suspicion",
-                error: error.message
-            });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: "Error checking suspicion",
+            error: error.message
+        });
     }
 });
 
@@ -265,8 +272,8 @@ attendanceRouter.post("/validate-challenge", authMiddleware, async (req, res) =>
         const userId = req.user._id;
 
         const validationResult = await revalidationService.validateChallengeResponse(
-            challengeId, 
-            response, 
+            challengeId,
+            response,
             userId
         );
 
@@ -274,10 +281,10 @@ attendanceRouter.post("/validate-challenge", authMiddleware, async (req, res) =>
             // Update attendance status if challenge passed
             await AttendanceModel.findOneAndUpdate(
                 { _id: req.body.attendanceId, userId: userId },
-                { 
+                {
                     status: "confirmed",
                     revalidationPassed: true,
-                    validationScore: 100 
+                    validationScore: 100
                 }
             );
         }
@@ -292,15 +299,15 @@ attendanceRouter.post("/validate-challenge", authMiddleware, async (req, res) =>
     }
 });
 
-attendanceRouter.get("/active-session", authMiddleware, async(req, res) => {
+attendanceRouter.get("/active-session", authMiddleware, async (req, res) => {
     try {
         const userId = req.user._id;
 
         const activeSession = await AttendanceModel.findOne({
             userId,
-            status: { $in: ["tentative", "confirmed", "flagged"]}
-        }).sort({ startTime: -1})
-        
+            status: { $in: ["tentative", "confirmed", "flagged"] }
+        }).sort({ startTime: -1 })
+
         if (!activeSession) {
             // Use 204 No Content to indicate success but no data (recommended for GET with no results)
             return res.status(204).json({
@@ -359,6 +366,199 @@ attendanceRouter.get("/my", authMiddleware, async (req, res) => {
         res.status(500).json({
             success: false,
             message: "Error fetching attendance history",
+            error: error.message
+        });
+    }
+});
+
+// Validate location with mock detection
+attendanceRouter.post('/validate-location', authMiddleware, async (req, res) => {
+    try {
+        const { latitude, longitude, accuracy, speed, altitude, isMockLocation } = req.body;
+        const userId = req.user._id;
+        const ipAddress = req.ip || req.headers['x-forwarded-for'] || req.connection.remoteAddress;
+
+        const validation = await mockLocationService.validateLocation(userId, {
+            latitude,
+            longitude,
+            accuracy,
+            speed,
+            altitude,
+            isMockLocation,
+            ipAddress
+        });
+
+        if (validation.action === 'BLOCK') {
+            return res.status(403).json({
+                success: false,
+                error: 'LOCATION_SPOOFING_DETECTED',
+                message: 'Your location appears to be spoofed. Please disable mock location apps.',
+                flags: validation.flags
+            });
+        }
+
+        res.json({
+            success: true,
+            data: validation
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: 'Location validation failed',
+            error: error.message
+        });
+    }
+});
+
+// Generate cognitive challenge
+attendanceRouter.post('/generate-cognitive-challenge', authMiddleware, async (req, res) => {
+    try {
+        const { attendanceId } = req.body;
+        const userId = req.user._id;
+
+        // Verify attendance exists and belongs to user
+        console.log('Looking for attendance:', { attendanceId, userId });
+        const attendance = await AttendanceModel.findOne({
+            _id: attendanceId,
+            userId,
+            status: { $in: ['tentative', 'confirmed'] }
+        });
+
+        console.log('Found attendance:', attendance ? 'Yes' : 'No');
+
+        if (!attendance) {
+            return res.status(404).json({
+                success: false,
+                error: 'ATTENDANCE_NOT_FOUND',
+                message: 'Active attendance session not found'
+            });
+        }
+
+        // Random challenge type
+        const types = ['reaction_time', 'color_match', 'pattern_memory', 'math_quick'];
+        const challengeType = types[Math.floor(Math.random() * types.length)];
+
+        const challengeData = cognitiveService.generateChallenge(challengeType);
+
+        const challenge = new CognitiveChallenge({
+            userId,
+            attendanceId,
+            challengeType,
+            challengeData,
+            expiresAt: new Date(Date.now() + 30000) // 30 seconds
+        });
+
+        await challenge.save();
+
+        // Return challenge without answers
+        const clientChallengeData = { ...challengeData };
+        delete clientChallengeData.correctAnswer;
+        delete clientChallengeData.correctIndex;
+
+        res.json({
+            success: true,
+            data: {
+                challengeId: challenge._id,
+                challengeType,
+                challengeData: clientChallengeData,
+                expiresAt: challenge.expiresAt
+            }
+        });
+    } catch (error) {
+        console.error('Cognitive challenge generation error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Failed to generate challenge',
+            error: error.message,
+            stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+        });
+    }
+});
+
+// Validate cognitive challenge response
+attendanceRouter.post('/validate-cognitive-challenge', authMiddleware, async (req, res) => {
+    try {
+        const { challengeId, response, responseTime } = req.body;
+        const userId = req.user._id;
+
+        const challenge = await CognitiveChallenge.findOne({
+            _id: challengeId,
+            userId,
+            status: 'pending'
+        });
+
+        if (!challenge) {
+            return res.status(404).json({
+                success: false,
+                error: 'CHALLENGE_NOT_FOUND',
+                message: 'Challenge not found or already completed'
+            });
+        }
+
+        if (new Date() > challenge.expiresAt) {
+            challenge.status = 'expired';
+            await challenge.save();
+            return res.status(400).json({
+                success: false,
+                error: 'CHALLENGE_EXPIRED',
+                message: 'Challenge has expired'
+            });
+        }
+
+        const isCorrect = cognitiveService.validateResponse(
+            challenge.challengeType,
+            challenge.challengeData,
+            response
+        );
+
+        // Reaction time should be human-like (200ms - 3000ms)
+        const isHumanTiming = cognitiveService.isHumanTiming(responseTime);
+
+        console.log('Challenge validation:', {
+            challengeType: challenge.challengeType,
+            response,
+            responseTime,
+            isCorrect,
+            isHumanTiming,
+            challengeData: challenge.challengeData
+        });
+
+        challenge.userResponse = {
+            responseTime,
+            answer: response,
+            timestamp: new Date()
+        };
+        challenge.status = (isCorrect && isHumanTiming) ? 'passed' : 'failed';
+        await challenge.save();
+
+        // Update attendance validation score
+        if (challenge.status === 'passed') {
+            await AttendanceModel.findByIdAndUpdate(challenge.attendanceId, {
+                $inc: { validationScore: 10 },
+                status: 'confirmed'
+            });
+        } else {
+            await AttendanceModel.findByIdAndUpdate(challenge.attendanceId, {
+                $inc: { validationScore: -5 }
+            });
+        }
+
+        res.json({
+            success: true,
+            data: {
+                passed: challenge.status === 'passed',
+                responseTime,
+                isCorrect,
+                isHumanTiming,
+                message: challenge.status === 'passed'
+                    ? 'Challenge completed successfully!'
+                    : 'Challenge failed. Please try again next time.'
+            }
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: 'Failed to validate challenge',
             error: error.message
         });
     }

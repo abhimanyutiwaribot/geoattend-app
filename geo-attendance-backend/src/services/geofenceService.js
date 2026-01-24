@@ -26,6 +26,9 @@ class GeofenceService {
         try {
             const geofences = await GeoFenceModel.find();
             
+            let closestGeofence = null;
+            let closestDistance = Infinity;
+            
             for (let geofence of geofences) {
                 const distance = this.calculateDistance(
                     userLat, 
@@ -33,6 +36,12 @@ class GeofenceService {
                     geofence.center.lat, 
                     geofence.center.lng
                 );
+                
+                // Track closest geofence
+                if (distance < closestDistance) {
+                    closestDistance = distance;
+                    closestGeofence = geofence;
+                }
                 
                 if (distance <= geofence.radius) {
                     return {
@@ -43,10 +52,11 @@ class GeofenceService {
                 }
             }
             
+            // Return closest geofence info even when outside
             return {
                 isWithin: false,
-                geofence: null,
-                distance: null
+                geofence: closestGeofence,
+                distance: closestDistance !== Infinity ? closestDistance : null
             };
         } catch (error) {
             throw new Error(`Geofence check failed: ${error.message}`);
