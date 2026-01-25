@@ -2,7 +2,7 @@ const MotionModel = require("../models/motion");
 const AttendanceModel = require("../models/attendance");
 
 class SuspicionDetectionService {
-    
+
     // Check for suspicious patterns in attendance session
     async analyzeSuspicion(attendanceId, userId) {
         try {
@@ -82,22 +82,22 @@ class SuspicionDetectionService {
         }
     }
 
-    // Time-based random revalidation (every 20-30 minutes)
+    // Time-based random revalidation (every 2 hours)
     checkTimeBasedRevalidation(sessionDurationMinutes) {
-        // Trigger random check every 25 minutes
-        const checkInterval = 25; // minutes
-        
+        // Trigger random check every 120 minutes (2 hours)
+        const checkInterval = 120; // minutes
+
         // Check if we've passed a check interval threshold
         // This ensures checks at: 25min, 50min, 75min, etc.
         const intervalsPassed = Math.floor(sessionDurationMinutes / checkInterval);
         const timeSinceLastInterval = sessionDurationMinutes % checkInterval;
-        
+
         // Trigger if we're within 2 minutes after an interval (to account for timing variations)
         // This means: 23-27min, 48-52min, 73-77min, etc.
         if (intervalsPassed > 0 && timeSinceLastInterval >= checkInterval - 2 && timeSinceLastInterval <= checkInterval + 2) {
             return { requiresCheck: true };
         }
-        
+
         return { requiresCheck: false };
     }
 
@@ -202,12 +202,12 @@ class SuspicionDetectionService {
     // Helper: Check if motion data indicates active movement
     isActiveMotion(motionLog) {
         if (!motionLog.gyro || !motionLog.accel) return false;
-        
+
         const gyroMagnitude = Math.sqrt(
-            motionLog.gyro[0]**2 + motionLog.gyro[1]**2 + motionLog.gyro[2]**2
+            motionLog.gyro[0] ** 2 + motionLog.gyro[1] ** 2 + motionLog.gyro[2] ** 2
         );
         const accelMagnitude = Math.sqrt(
-            motionLog.accel[0]**2 + motionLog.accel[1]**2 + motionLog.accel[2]**2
+            motionLog.accel[0] ** 2 + motionLog.accel[1] ** 2 + motionLog.accel[2] ** 2
         );
 
         return gyroMagnitude > 0.1 || Math.abs(accelMagnitude - 9.8) > 0.5;
@@ -220,8 +220,8 @@ class SuspicionDetectionService {
         // Simple check: if last 3 patterns are identical
         const lastThree = patterns.slice(-3);
         const firstPattern = JSON.stringify(lastThree[0]);
-        
-        return lastThree.every(pattern => 
+
+        return lastThree.every(pattern =>
             JSON.stringify(pattern) === firstPattern
         );
     }

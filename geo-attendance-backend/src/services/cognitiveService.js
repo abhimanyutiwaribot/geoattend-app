@@ -128,10 +128,10 @@ class CognitiveService {
   }
 
   /**
-   * Validate response timing (200ms - 5000ms is human range)
+   * Validate response timing (100ms - 15000ms is human range)
    */
   isHumanTiming(responseTime) {
-    return responseTime >= 200 && responseTime <= 5000;
+    return responseTime >= 100 && responseTime <= 15000;
   }
 }
 
