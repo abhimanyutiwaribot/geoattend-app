@@ -20,19 +20,20 @@ attendanceRouter.post("/start", authMiddleware, async function (req, res) {
         const { lat, lng } = req.body;
         const userId = req.user._id;
 
-        // todo : Add geofence validation logic here
-        const geoFenceCheck = await GeofenceService.isWithinGeofence(lat, lng)
+        // Check if user is within their assigned office geofence
+        const geoFenceCheck = await GeofenceService.isWithinGeofence(lat, lng, userId);
 
         if (!geoFenceCheck.isWithin) {
             return res.status(400).json({
                 success: false,
-                message: "You are not within the office geofence",
+                message: "You are not within your assigned office geofence",
                 error: "OUTSIDE_GEOFENCE",
                 data: {
-                    requiredRadius: 100, //meters
+                    assignedOffice: geoFenceCheck.geofence?.name || "Not assigned",
+                    requiredRadius: geoFenceCheck.geofence?.radius || 100, //meters
                     userDistance: geoFenceCheck.distance
                 }
-            })
+            });
         }
 
         // Check if user already has an active session
@@ -202,6 +203,8 @@ attendanceRouter.post("/end", authMiddleware, async function (req, res) {
 attendanceRouter.post("/geofence-status", authMiddleware, async function (req, res) {
     try {
         const { lat, lng } = req.body;
+        const userId = req.user._id;
+
         if (typeof lat !== "number" || typeof lng !== "number") {
             return res.status(400).json({
                 success: false,
@@ -209,7 +212,7 @@ attendanceRouter.post("/geofence-status", authMiddleware, async function (req, r
             });
         }
 
-        const geoFenceCheck = await GeofenceService.isWithinGeofence(lat, lng);
+        const geoFenceCheck = await GeofenceService.isWithinGeofence(lat, lng, userId);
 
         res.json({
             success: true,
@@ -511,8 +514,15 @@ attendanceRouter.post('/validate-cognitive-challenge', authMiddleware, async (re
             response
         );
 
-        // Reaction time should be human-like (200ms - 3000ms)
-        const isHumanTiming = cognitiveService.isHumanTiming(responseTime);
+        // Reaction time should be human-like (100ms - 15000ms)
+        const isHumanTiming = responseTime >= 100 && responseTime <= 15000;
+
+        let failureReason = '';
+        if (!isCorrect) failureReason = 'Incorrect answer.';
+        else if (!isHumanTiming) {
+            if (responseTime < 100) failureReason = 'Response too fast (bot-like).';
+            else failureReason = 'Response too slow.';
+        }
 
         console.log('Challenge validation:', {
             challengeType: challenge.challengeType,
@@ -520,6 +530,7 @@ attendanceRouter.post('/validate-cognitive-challenge', authMiddleware, async (re
             responseTime,
             isCorrect,
             isHumanTiming,
+            failureReason,
             challengeData: challenge.challengeData
         });
 
@@ -552,7 +563,7 @@ attendanceRouter.post('/validate-cognitive-challenge', authMiddleware, async (re
                 isHumanTiming,
                 message: challenge.status === 'passed'
                     ? 'Challenge completed successfully!'
-                    : 'Challenge failed. Please try again next time.'
+                    : `Challenge failed: ${failureReason} Please try again next time.`
             }
         });
     } catch (error) {
@@ -563,5 +574,12 @@ attendanceRouter.post('/validate-cognitive-challenge', authMiddleware, async (re
         });
     }
 });
+
+/**
+ * Helper to validate response timing (100ms - 15000ms is human range)
+ */
+function isHumanTimingHelper(responseTime) {
+    return responseTime >= 100 && responseTime <= 15000;
+}
 
 module.exports = attendanceRouter;

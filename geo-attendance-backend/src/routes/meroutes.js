@@ -27,4 +27,37 @@ meRoute.get("/me", authMiddleware, async (req, res) => {
     }
 });
 
+// Get user's assigned geofence
+meRoute.get("/my-geofence", authMiddleware, async (req, res) => {
+    try {
+        const User = require("../models/user");
+        const GeoFenceModel = require("../models/officeGeofence");
+
+        // Get user with populated assignedOfficeId
+        const user = await User.findById(req.user._id).populate('assignedOfficeId');
+
+        if (!user.assignedOfficeId) {
+            return res.json({
+                success: true,
+                message: "No geofence assigned",
+                data: { geofence: null }
+            });
+        }
+
+        res.json({
+            success: true,
+            message: "Assigned geofence retrieved successfully",
+            data: {
+                geofence: user.assignedOfficeId
+            }
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: "Error fetching assigned geofence",
+            error: error.message
+        });
+    }
+});
+
 module.exports = meRoute;

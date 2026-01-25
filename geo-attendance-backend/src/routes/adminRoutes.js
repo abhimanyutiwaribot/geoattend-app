@@ -29,19 +29,19 @@ adminRoutes.get("/dashboard", requirePermission("canViewReports"), async (req, r
         ] = await Promise.all([
             User.countDocuments(),
             Attendance.countDocuments({ status: { $in: ["tentative", "confirmed"] } }),
-            Attendance.countDocuments({ 
-                startTime: { $gte: today, $lt: tomorrow } 
+            Attendance.countDocuments({
+                startTime: { $gte: today, $lt: tomorrow }
             }),
             Attendance.countDocuments({ status: "flagged" }),
-            RevalidationChallenge.countDocuments({ 
-                createdAt: { $gte: today, $lt: tomorrow } 
+            RevalidationChallenge.countDocuments({
+                createdAt: { $gte: today, $lt: tomorrow }
             })
         ]);
 
         // Get weekly attendance trend
         const weekAgo = new Date();
         weekAgo.setDate(weekAgo.getDate() - 7);
-        
+
         const weeklyTrend = await Attendance.aggregate([
             {
                 $match: {
@@ -89,7 +89,7 @@ adminRoutes.get("/dashboard", requirePermission("canViewReports"), async (req, r
 adminRoutes.get("/users", requirePermission("canManageUsers"), async (req, res) => {
     try {
         const { page = 1, limit = 10, search = "" } = req.query;
-        
+
         const query = search ? {
             $or: [
                 { name: { $regex: search, $options: "i" } },
@@ -128,17 +128,17 @@ adminRoutes.get("/users", requirePermission("canManageUsers"), async (req, res) 
 // 📍 ATTENDANCE MONITORING
 adminRoutes.get("/attendances", requirePermission("canViewReports"), async (req, res) => {
     try {
-        const { 
-            page = 1, 
-            limit = 20, 
-            status, 
+        const {
+            page = 1,
+            limit = 20,
+            status,
             userId,
             startDate,
-            endDate 
+            endDate
         } = req.query;
 
         let query = {};
-        
+
         if (status) query.status = status;
         if (userId) query.userId = userId;
         if (startDate || endDate) {
@@ -187,18 +187,18 @@ adminRoutes.get("/suspicious-activities", requirePermission("canViewSuspicious")
                 { validationScore: { $lt: 30 } }
             ]
         })
-        .populate("userId", "name email")
-        .sort({ createdAt: -1 })
-        .limit(limit * 1)
-        .skip((page - 1) * limit);
+            .populate("userId", "name email")
+            .sort({ createdAt: -1 })
+            .limit(limit * 1)
+            .skip((page - 1) * limit);
 
         const challenges = await RevalidationChallenge.find({
             status: { $in: ["failed", "expired"] }
         })
-        .populate("userId", "name email")
-        .populate("attendanceId")
-        .sort({ createdAt: -1 })
-        .limit(10);
+            .populate("userId", "name email")
+            .populate("attendanceId")
+            .sort({ createdAt: -1 })
+            .limit(10);
 
         res.json({
             success: true,
@@ -222,7 +222,7 @@ adminRoutes.get("/suspicious-activities", requirePermission("canViewSuspicious")
 adminRoutes.get("/geofences", requirePermission("canManageGeofence"), async (req, res) => {
     try {
         const geofences = await GeoFenceModel.find().sort({ createdAt: -1 });
-        
+
         res.json({
             success: true,
             data: {
@@ -239,14 +239,22 @@ adminRoutes.get("/geofences", requirePermission("canManageGeofence"), async (req
 
 adminRoutes.post("/geofences", requirePermission("canManageGeofence"), async (req, res) => {
     try {
-        const { name, center, radius } = req.body;
+        const { name, type, center, radius, polygon } = req.body;
 
-        const geofence = new GeoFenceModel({
+        const geofenceData = {
             name,
-            center,
-            radius
-        });
+            type: type || 'circle'
+        };
 
+        // Add type-specific fields
+        if (type === 'polygon') {
+            geofenceData.polygon = polygon;
+        } else {
+            geofenceData.center = center;
+            geofenceData.radius = radius;
+        }
+
+        const geofence = new GeoFenceModel(geofenceData);
         await geofence.save();
 
         res.status(201).json({
@@ -255,9 +263,55 @@ adminRoutes.post("/geofences", requirePermission("canManageGeofence"), async (re
             data: { geofence }
         });
     } catch (error) {
+        console.error("Geofence creation error:", error);
         res.status(500).json({
             success: false,
-            message: "Error creating geofence"
+            message: error.message || "Error creating geofence"
+        });
+    }
+});
+
+// Assign office to user
+adminRoutes.put("/users/:userId/assign-office", requirePermission("canManageUsers"), async (req, res) => {
+    try {
+        const { userId } = req.params;
+        const { officeId } = req.body;
+
+        // Verify office exists
+        if (officeId) {
+            const office = await GeoFenceModel.findById(officeId);
+            if (!office) {
+                return res.status(404).json({
+                    success: false,
+                    message: "Office not found"
+                });
+            }
+        }
+
+        // Update user
+        const user = await User.findByIdAndUpdate(
+            userId,
+            { assignedOfficeId: officeId || null },
+            { new: true }
+        ).select("-password").populate("assignedOfficeId");
+
+        if (!user) {
+            return res.status(404).json({
+                success: false,
+                message: "User not found"
+            });
+        }
+
+        res.json({
+            success: true,
+            message: officeId ? "Office assigned successfully" : "Office assignment removed",
+            data: { user }
+        });
+    } catch (error) {
+        console.error("Assign office error:", error);
+        res.status(500).json({
+            success: false,
+            message: "Error assigning office"
         });
     }
 });
