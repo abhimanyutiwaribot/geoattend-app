@@ -140,21 +140,22 @@ export function useSuspicionCheck({ session, navigation }) {
       }
     };
 
-    // Initial check after 2 minutes
+    // Initial check after 60 minutes (instead of 2)
     const initialTimeout = setTimeout(() => {
       generateChallenge();
-    }, 2 * 60 * 1000);
+    }, 60 * 60 * 1000);
 
-    // Then check every 45 minutes (as per requirements)
+    // Then check every 120 minutes (2 hours)
+    // This provides a balance between presence verification and work focus
     const intervalId = setInterval(() => {
       generateChallenge();
-    }, 45 * 60 * 1000);
+    }, 120 * 60 * 1000);
 
     return () => {
       clearTimeout(initialTimeout);
       clearInterval(intervalId);
     };
-  }, [session?.attendanceId, navigation, lastChallengeId]);
+  }, [session?.attendanceId, navigation]); // Removed lastChallengeId from dependencies to prevent re-execution loop
 
   return { lastChallengeId };
 }

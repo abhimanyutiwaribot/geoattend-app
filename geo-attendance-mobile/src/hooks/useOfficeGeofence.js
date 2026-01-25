@@ -2,12 +2,16 @@ import { useState, useEffect } from 'react';
 import { api } from '../api/client';
 
 /**
- * Hook to fetch office geofence data from backend
+ * Hook to fetch user's assigned office geofence from backend
+ * Supports both circle and polygon geofences
  */
 export function useOfficeGeofence() {
   const [geofence, setGeofence] = useState({
+    type: 'circle',
     center: { lat: 28.6139, lng: 77.2090 }, // Default Delhi coordinates
-    radius: 100
+    radius: 100,
+    polygon: null,
+    name: 'Default Office'
   });
   const [loading, setLoading] = useState(true);
 
@@ -17,19 +21,23 @@ export function useOfficeGeofence() {
 
   const fetchGeofence = async () => {
     try {
-      // Fetch geofence from backend
-      // You'll need to create this endpoint in the backend
-      const response = await api.get('/attendance/office-geofence');
+      // Fetch user's assigned geofence from backend
+      const response = await api.get('/user/my-geofence');
 
-      if (response.data?.data) {
-        const officeData = response.data.data;
+      if (response.data?.data?.geofence) {
+        const officeData = response.data.data.geofence;
+
         setGeofence({
-          center: {
-            lat: officeData.center.lat,
-            lng: officeData.center.lng
-          },
-          radius: officeData.radius || 100
+          type: officeData.type || 'circle',
+          name: officeData.name || 'Office',
+          // For circle type
+          center: officeData.center || { lat: 28.6139, lng: 77.2090 },
+          radius: officeData.radius || 100,
+          // For polygon type
+          polygon: officeData.polygon || null
         });
+      } else {
+        console.log('No geofence assigned to user, using default');
       }
     } catch (error) {
       console.log('Failed to fetch geofence, using default:', error.message);
