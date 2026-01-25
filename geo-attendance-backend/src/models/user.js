@@ -1,47 +1,52 @@
 const mongoose = require("mongoose");
 
 const UserTable = new mongoose.Schema({
-    name: {type: String, required: true},
-    email: {type:String, required: true, unique: true},
-    password: {type:String, required: true},
-    deviceID: {type: String, required: true, unique: true, sparse: true},
+    name: { type: String, required: true },
+    email: { type: String, required: true, unique: true },
+    password: { type: String, required: true },
+    deviceID: { type: String, required: true, unique: true, sparse: true },
     devices: [{
-        deviceID: { 
-            type: String, 
-            required: true 
+        deviceID: {
+            type: String,
+            required: true
         },
-        deviceName: { 
-            type: String, 
-            default: "Primary Device" 
+        deviceName: {
+            type: String,
+            default: "Primary Device"
         },
-        lastLogin: { 
-            type: Date, 
-            default: Date.now 
+        lastLogin: {
+            type: Date,
+            default: Date.now
         },
-        isActive: { 
-            type: Boolean, 
-            default: true 
+        isActive: {
+            type: Boolean,
+            default: true
         },
-        addedAt: { 
-            type: Date, 
-            default: Date.now 
+        addedAt: {
+            type: Date,
+            default: Date.now
         }
     }],
-    firstLogin: { 
-        type: Date, 
-        default: Date.now 
+    firstLogin: {
+        type: Date,
+        default: Date.now
     },
-    lastLogin: { 
-        type: Date, 
-        default: Date.now 
+    lastLogin: {
+        type: Date,
+        default: Date.now
     },
-    loginCount: { 
-        type: Number, 
-        default: 1 
+    loginCount: {
+        type: Number,
+        default: 1
     },
-    isActive: { 
-        type: Boolean, 
-        default: true 
+    isActive: {
+        type: Boolean,
+        default: true
+    },
+    assignedOfficeId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'OfficeGeofence',
+        required: false // Optional for backward compatibility
     }
 }, {
     timestamps: true
