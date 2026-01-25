@@ -11,8 +11,13 @@ import QuickMathChallenge from './challenges/QuickMathChallenge';
 
 export default function CognitiveChallengeScreen({ route, navigation }) {
   const { challengeId, challengeType, challengeData, expiresAt } = route.params;
-  const [startTime] = useState(Date.now());
+  const [startTime, setStartTime] = useState(Date.now());
   const [timeRemaining, setTimeRemaining] = useState(30);
+
+  // Set start time on mount
+  useEffect(() => {
+    setStartTime(Date.now());
+  }, []);
 
   // Countdown timer
   useEffect(() => {

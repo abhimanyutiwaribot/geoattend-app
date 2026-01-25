@@ -1,32 +1,36 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, Alert } from 'react-native';
+import { View, Text, StyleSheet, Alert, ScrollView, RefreshControl } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { api } from '../api/client';
 
 // Custom Hooks
-import { useLocationTracking, useLocationPolling, useGeofenceMonitoring } from '../hooks/useLocation';
+import { useLocationTracking, useUnifiedLocationTracking } from '../hooks/useLocation2';
 import { useAttendanceSession, useMotionValidation } from '../hooks/useSession';
 import { useNotifications, useSuspicionCheck } from '../hooks/useNotifications';
 import { useOfficeGeofence } from '../hooks/useOfficeGeofence';
+import { useDeviceActivity } from '../hooks/useDeviceActivity';
 
 // Components
 import { GeofenceStatusCard } from '../components/GeofenceStatusCard';
 import { SessionInfoCard } from '../components/SessionInfoCard';
 import { AttendanceButton } from '../components/AttendanceButton';
-import { AttendanceMap } from '../components/AttendanceMap';
+import { AttendanceMapLeaflet as AttendanceMap } from '../components/AttendanceMapLeaflet';
+
 
 export default function HomeScreen() {
   const navigation = useNavigation();
   const [geofenceStatus, setGeofenceStatus] = useState(null);
+  const [refreshing, setRefreshing] = useState(false);
 
-  // Custom hooks
+  // Location tracking hook
   const {
     currentLocation,
     setCurrentLocation,
     locationStatus,
     setLocationStatus,
     lastLocationRef,
+    lastUpdateTime,
     readCurrentLocation
   } = useLocationTracking();
 
@@ -69,11 +73,6 @@ export default function HomeScreen() {
     try {
       await endAttendance(session.attendanceId);
       stopMotionValidation();
-
-      // Reset geofence tracking
-      setOutsideGeofenceSince(null);
-      setHasShownWarning(false);
-
       Alert.alert('Success', 'Attendance session ended.');
       setSession(null);
     } catch (e) {
@@ -81,31 +80,23 @@ export default function HomeScreen() {
     }
   };
 
-  // Geofence monitoring
-  const {
-    outsideGeofenceSince,
-    setOutsideGeofenceSince,
-    hasShownWarning,
-    setHasShownWarning
-  } = useGeofenceMonitoring({
-    session,
-    readCurrentLocation,
-    checkGeofenceStatus,
-    handleEndAttendance
-  });
-
-  // Location polling before session starts
-  useLocationPolling({
+  // Unified location tracking (replaces old geofence monitoring + location polling)
+  const { outsideGeofenceSince, hasShownWarning } = useUnifiedLocationTracking({
     session,
     locationStatus,
     setLocationStatus,
     setCurrentLocation,
     lastLocationRef,
-    checkGeofenceStatus
+    lastUpdateTime,
+    checkGeofenceStatus,
+    handleEndAttendance
   });
 
   // Notifications
   useNotifications(navigation);
+
+  // Device Activity Tracking
+  const { logActivity } = useDeviceActivity(session);
 
   // Suspicion checking
   useSuspicionCheck({ session, navigation });
@@ -131,10 +122,34 @@ export default function HomeScreen() {
     };
   }, [motionSub]);
 
+  // Handle pull-to-refresh
+  const onRefresh = async () => {
+    setRefreshing(true);
+    try {
+      // 1. Refresh session
+      const activeSession = await fetchActiveSession();
+      if (activeSession) {
+        setSession(activeSession);
+      } else {
+        setSession(null);
+      }
+
+      // 2. Refresh location and geofence
+      const loc = await readCurrentLocation(false, true); // high accuracy
+      if (loc) {
+        await checkGeofenceStatus(loc.coords);
+      }
+    } catch (e) {
+      console.log('Refresh error:', e.message);
+    } finally {
+      setRefreshing(false);
+    }
+  };
+
   // Handle start attendance
   const handleStartAttendance = async () => {
-    // Validate location with server before starting attendance
-    const loc = await readCurrentLocation(true); // Pass true to enable server validation
+    // Use HIGH accuracy for starting attendance (critical operation)
+    const loc = await readCurrentLocation(true, true); // validateWithServer=true, highAccuracy=true
     if (!loc) return;
 
     try {
@@ -154,41 +169,53 @@ export default function HomeScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <Text style={styles.title}>Live presence</Text>
-      <Text style={styles.subtitle}>
-        {geofenceStatus
-          ? geofenceStatus.isWithin
-            ? 'You are inside the office geofence.'
-            : 'You are currently outside the office area.'
-          : 'We use your location to check if you are at the office.'}
-      </Text>
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor="#22c55e"
+            colors={['#22c55e']}
+          />
+        }
+      >
+        <Text style={styles.title}>Live presence</Text>
+        <Text style={styles.subtitle}>
+          {geofenceStatus
+            ? geofenceStatus.isWithin
+              ? 'You are inside the office geofence.'
+              : 'You are currently outside the office area.'
+            : 'We use your location to check if you are at the office.'}
+        </Text>
 
-      <AttendanceMap
-        currentLocation={currentLocation}
-        geofenceStatus={geofenceStatus}
-        officeGeofence={officeGeofence}
-      />
+        <AttendanceMap
+          currentLocation={currentLocation}
+          geofenceStatus={geofenceStatus}
+          officeGeofence={officeGeofence}
+        />
 
-      <GeofenceStatusCard
-        geofenceStatus={geofenceStatus}
-        currentLocation={currentLocation}
-        locationStatus={locationStatus}
-        onRefresh={readCurrentLocation}
-      />
+        <GeofenceStatusCard
+          geofenceStatus={geofenceStatus}
+          currentLocation={currentLocation}
+          locationStatus={locationStatus}
+          onRefresh={readCurrentLocation}
+        />
 
-      <SessionInfoCard
-        session={session}
-        checkingSession={checkingSession}
-      />
+        <SessionInfoCard
+          session={session}
+          checkingSession={checkingSession}
+        />
 
-      <AttendanceButton
-        session={session}
-        loading={loading}
-        geofenceStatus={geofenceStatus}
-        locationStatus={locationStatus}
-        onStart={handleStartAttendance}
-        onEnd={handleEndAttendance}
-      />
+        <AttendanceButton
+          session={session}
+          loading={loading}
+          geofenceStatus={geofenceStatus}
+          locationStatus={locationStatus}
+          onStart={handleStartAttendance}
+          onEnd={handleEndAttendance}
+        />
+      </ScrollView>
     </SafeAreaView>
   );
 }
@@ -197,6 +224,8 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#020617',
+  },
+  scrollContent: {
     padding: 24,
   },
   title: {
