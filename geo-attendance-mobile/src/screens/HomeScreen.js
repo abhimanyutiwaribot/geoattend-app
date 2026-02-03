@@ -4,36 +4,26 @@ import { useNavigation } from '@react-navigation/native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { api } from '../api/client';
 
-// Custom Hooks
-import { useLocationTracking, useUnifiedLocationTracking } from '../hooks/useLocation2';
+// Custom Hooks - EVENT-DRIVEN ARCHITECTURE
+import { useEventDrivenLocation } from '../hooks/useEventDrivenLocation';
+import { useAttendanceBusinessLogic } from '../services/attendanceBusinessLogic';
 import { useAttendanceSession, useMotionValidation } from '../hooks/useSession';
 import { useNotifications, useSuspicionCheck } from '../hooks/useNotifications';
 import { useOfficeGeofence } from '../hooks/useOfficeGeofence';
 import { useDeviceActivity } from '../hooks/useDeviceActivity';
 
 // Components
-import { GeofenceStatusCard } from '../components/GeofenceStatusCard';
 import { SessionInfoCard } from '../components/SessionInfoCard';
 import { AttendanceButton } from '../components/AttendanceButton';
-import { AttendanceMapLeaflet as AttendanceMap } from '../components/AttendanceMapLeaflet';
+import { AttendanceMap } from '../components/AttendanceMap';
 
 
 export default function HomeScreen() {
   const navigation = useNavigation();
-  const [geofenceStatus, setGeofenceStatus] = useState(null);
   const [refreshing, setRefreshing] = useState(false);
+  const [isInteractingWithMap, setIsInteractingWithMap] = useState(false);
 
-  // Location tracking hook
-  const {
-    currentLocation,
-    setCurrentLocation,
-    locationStatus,
-    setLocationStatus,
-    lastLocationRef,
-    lastUpdateTime,
-    readCurrentLocation
-  } = useLocationTracking();
-
+  // Session management
   const {
     session,
     setSession,
@@ -49,23 +39,23 @@ export default function HomeScreen() {
   // Fetch office geofence from backend
   const { geofence: officeGeofence } = useOfficeGeofence();
 
-  // Geofence status checker
-  const checkGeofenceStatus = async (coords) => {
-    try {
-      const res = await api.post('/attendance/geofence-status', {
-        lat: coords.latitude,
-        lng: coords.longitude,
-      });
-      if (res.data?.data) {
-        setGeofenceStatus(res.data.data);
-        return res.data.data.isWithin;
-      }
-      return null;
-    } catch (e) {
-      console.log('Geofence check error:', e.message);
-      return null;
-    }
-  };
+  // EVENT-DRIVEN LOCATION TRACKING (NEW!)
+  const {
+    currentLocation,
+    geofenceStatus,
+    locationPermission: locationStatus,
+    requestCurrentLocation,
+    pipeline
+  } = useEventDrivenLocation({
+    session,
+    officeGeofence
+  });
+
+  // Business logic (auto-warnings, auto-checkout) - EVENT-DRIVEN
+  useAttendanceBusinessLogic({
+    session,
+    pipeline
+  });
 
   // Handle end attendance with cleanup
   const handleEndAttendance = async () => {
@@ -80,18 +70,6 @@ export default function HomeScreen() {
     }
   };
 
-  // Unified location tracking (replaces old geofence monitoring + location polling)
-  const { outsideGeofenceSince, hasShownWarning } = useUnifiedLocationTracking({
-    session,
-    locationStatus,
-    setLocationStatus,
-    setCurrentLocation,
-    lastLocationRef,
-    lastUpdateTime,
-    checkGeofenceStatus,
-    handleEndAttendance
-  });
-
   // Notifications
   useNotifications(navigation);
 
@@ -101,16 +79,21 @@ export default function HomeScreen() {
   // Suspicion checking
   useSuspicionCheck({ session, navigation });
 
-  // Initialize session on mount
+  // Initialize session and location on mount
   useEffect(() => {
-    const initSession = async () => {
+    const initApp = async () => {
+      // 1. Check for active attendance session
       const activeSession = await fetchActiveSession();
       if (activeSession) {
         setSession(activeSession);
         startMotionValidation(activeSession.attendanceId, setSession);
       }
+
+      // 2. Get initial location to center the map immediately
+      // This ensures the map doesn't stay stuck on default coordinates
+      await readCurrentLocation(false, false); // highAccuracy=false for fast initial fix
     };
-    initSession();
+    initApp();
   }, []);
 
   // Cleanup motion subscription on unmount
@@ -134,11 +117,8 @@ export default function HomeScreen() {
         setSession(null);
       }
 
-      // 2. Refresh location and geofence
-      const loc = await readCurrentLocation(false, true); // high accuracy
-      if (loc) {
-        await checkGeofenceStatus(loc.coords);
-      }
+      // 2. Refresh location (event-driven system handles geofence automatically)
+      await requestCurrentLocation();
     } catch (e) {
       console.log('Refresh error:', e.message);
     } finally {
@@ -148,9 +128,18 @@ export default function HomeScreen() {
 
   // Handle start attendance
   const handleStartAttendance = async () => {
-    // Use HIGH accuracy for starting attendance (critical operation)
-    const loc = await readCurrentLocation(true, true); // validateWithServer=true, highAccuracy=true
-    if (!loc) return;
+    // Request current location
+    const loc = await requestCurrentLocation();
+    if (!loc) {
+      Alert.alert('Error', 'Unable to get your location. Please try again.');
+      return;
+    }
+
+    // Check if within geofence
+    if (!geofenceStatus?.isWithin) {
+      Alert.alert('Error', 'You must be inside the office area to start attendance.');
+      return;
+    }
 
     try {
       const data = await startAttendance(loc.coords.latitude, loc.coords.longitude);
@@ -171,10 +160,13 @@ export default function HomeScreen() {
     <SafeAreaView style={styles.container}>
       <ScrollView
         contentContainerStyle={styles.scrollContent}
+        nestedScrollEnabled={true}
+        showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
             onRefresh={onRefresh}
+            enabled={!isInteractingWithMap}
             tintColor="#22c55e"
             colors={['#22c55e']}
           />
@@ -182,24 +174,22 @@ export default function HomeScreen() {
       >
         <Text style={styles.title}>Live presence</Text>
         <Text style={styles.subtitle}>
-          {geofenceStatus
-            ? geofenceStatus.isWithin
-              ? 'You are inside the office geofence.'
-              : 'You are currently outside the office area.'
-            : 'We use your location to check if you are at the office.'}
+          {!officeGeofence
+            ? 'No office geofence assigned. Contact your administrator to set up attendance tracking.'
+            : geofenceStatus
+              ? geofenceStatus.isWithin
+                ? 'You are inside the office geofence.'
+                : 'You are currently outside the office area.'
+              : 'We use your location to check if you are at the office.'}
         </Text>
+
 
         <AttendanceMap
           currentLocation={currentLocation}
           geofenceStatus={geofenceStatus}
           officeGeofence={officeGeofence}
-        />
-
-        <GeofenceStatusCard
-          geofenceStatus={geofenceStatus}
-          currentLocation={currentLocation}
-          locationStatus={locationStatus}
-          onRefresh={readCurrentLocation}
+          onRequestLocation={requestCurrentLocation}
+          onMapInteractionChange={setIsInteractingWithMap}
         />
 
         <SessionInfoCard
