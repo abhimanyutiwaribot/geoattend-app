@@ -25,6 +25,9 @@ function Tabs() {
     <View style={{ flex: 1, backgroundColor: '#020617' }}>
       <Tab.Navigator
         tabBarPosition="bottom"
+        sceneContainerStyle={{
+          paddingBottom: Platform.OS === 'ios' ? 110 : 125, // Space for floating tab bar
+        }}
         screenOptions={({ route }) => ({
           swipeEnabled: true,
           animationEnabled: false,
