@@ -10,6 +10,17 @@ export function AttendanceButton({
   onEnd
 }) {
   if (!session) {
+    const isDisabled = loading ||
+      (geofenceStatus && geofenceStatus.isWithin === false) ||
+      locationStatus !== 'granted';
+
+    console.log('🔘 Start Attendance Button State:', {
+      loading,
+      geofenceIsWithin: geofenceStatus?.isWithin,
+      locationStatus,
+      isDisabled
+    });
+
     return (
       <TouchableOpacity
         style={[
@@ -17,12 +28,11 @@ export function AttendanceButton({
           styles.primary,
           geofenceStatus && !geofenceStatus.isWithin && styles.buttonDisabled,
         ]}
-        onPress={onStart}
-        disabled={
-          loading ||
-          (geofenceStatus && geofenceStatus.isWithin === false) ||
-          locationStatus !== 'granted'
-        }
+        onPress={() => {
+          console.log('🎯 Start Attendance button clicked!');
+          onStart();
+        }}
+        disabled={isDisabled}
       >
         <Text style={styles.buttonText}>
           {loading
