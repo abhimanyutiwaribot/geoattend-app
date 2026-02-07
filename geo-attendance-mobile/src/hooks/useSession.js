@@ -26,20 +26,36 @@ export function useAttendanceSession() {
     }
   };
 
-  const startAttendance = async (latitude, longitude) => {
+  const startAttendance = async (latitude, longitude, identityData) => {
     try {
+      // identityData can be either a photo (base64 string) or embedding (array)
+      const isPhoto = typeof identityData === 'string' && identityData.startsWith('data:image');
+
+      console.log('📡 Calling /attendance/start API with:', {
+        latitude,
+        longitude,
+        dataType: isPhoto ? 'photo' : 'embedding',
+        dataSize: isPhoto ? `${(identityData.length / 1024).toFixed(2)}KB` : `${identityData?.length} dimensions`
+      });
+
       setLoading(true);
       const res = await api.post('/attendance/start', {
         lat: latitude,
         lng: longitude,
+        // Send either image or embedding based on what we received
+        ...(isPhoto ? { identityImage: identityData } : { identityEmbedding: identityData })
       });
+      console.log('✅ Attendance started successfully:', res.data);
       return res.data.data;
     } catch (e) {
+      console.error('❌ Start attendance error:', e.response?.data || e.message);
       const msg =
         e.response?.data?.message ||
         (e.response?.data?.error === 'OUTSIDE_GEOFENCE'
           ? 'You are outside the office geofence.'
-          : 'Failed to start attendance');
+          : e.response?.data?.error === 'IDENTITY_VERIFICATION_FAILED'
+            ? 'Identity verification failed. Please try again.'
+            : 'Failed to start attendance');
       throw new Error(msg);
     } finally {
       setLoading(false);

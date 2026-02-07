@@ -64,6 +64,27 @@ export function useEventDrivenLocation({ session, officeGeofence }) {
     };
   }, []);
 
+  // Check location permission on mount (before any session exists)
+  useEffect(() => {
+    (async () => {
+      try {
+        const { status } = await Location.getForegroundPermissionsAsync();
+        console.log('📍 [Hook] Initial permission check:', status);
+        setLocationPermission(status);
+
+        // If not granted, request it
+        if (status !== 'granted') {
+          const { status: newStatus } = await Location.requestForegroundPermissionsAsync();
+          console.log('📍 [Hook] Permission request result:', newStatus);
+          setLocationPermission(newStatus);
+        }
+      } catch (error) {
+        console.error('❌ [Hook] Error checking permissions:', error);
+        setLocationPermission('denied');
+      }
+    })();
+  }, []);
+
   // Update geofence when it changes
   useEffect(() => {
     if (pipelineRef.current && officeGeofence) {
