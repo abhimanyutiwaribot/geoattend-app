@@ -41,6 +41,9 @@ export default function RegisterScreen({ navigation }) {
 
       // Auto-login after successful registration
       await login({ email, password, deviceID });
+
+      // Navigate to face enrollment (mandatory setup)
+      navigation.replace('FaceEnrollment');
       setLoading(false);
     } catch (e) {
       setLoading(false);

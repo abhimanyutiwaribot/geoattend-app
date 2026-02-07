@@ -8,20 +8,25 @@ import { api } from '../api/client';
 import { useEventDrivenLocation } from '../hooks/useEventDrivenLocation';
 import { useAttendanceBusinessLogic } from '../services/attendanceBusinessLogic';
 import { useAttendanceSession, useMotionValidation } from '../hooks/useSession';
-import { useNotifications, useSuspicionCheck } from '../hooks/useNotifications';
 import { useOfficeGeofence } from '../hooks/useOfficeGeofence';
+import { useNotifications } from '../hooks/useNotifications';
 import { useDeviceActivity } from '../hooks/useDeviceActivity';
+import { usePassiveIdentity } from '../hooks/usePassiveIdentity';
 
 // Components
 import { SessionInfoCard } from '../components/SessionInfoCard';
 import { AttendanceButton } from '../components/AttendanceButton';
 import { AttendanceMap } from '../components/AttendanceMap';
+// import { MapLibreMap } from '../components/MapLibreMap'; // MapLibre (Free)
+import { FaceVerificationModal } from '../components/FaceVerificationModal';
 
 
 export default function HomeScreen() {
   const navigation = useNavigation();
   const [refreshing, setRefreshing] = useState(false);
   const [isInteractingWithMap, setIsInteractingWithMap] = useState(false);
+  const [isFaceModalVisible, setIsFaceModalVisible] = useState(false);
+  const [pendingLocation, setPendingLocation] = useState(null);
 
   // Session management
   const {
@@ -76,8 +81,8 @@ export default function HomeScreen() {
   // Device Activity Tracking
   const { logActivity } = useDeviceActivity(session);
 
-  // Suspicion checking
-  useSuspicionCheck({ session, navigation });
+  // Passive Identity Verification (Phase 4.4)
+  usePassiveIdentity(session);
 
   // Initialize session and location on mount
   useEffect(() => {
@@ -141,8 +146,29 @@ export default function HomeScreen() {
       return;
     }
 
+    console.log('🎭 Opening Face Verification Modal');
+    setPendingLocation(loc);
+    setIsFaceModalVisible(true);
+  };
+
+  /**
+   * Called after 2s face scan completes successfully
+   */
+  const handleFaceVerified = async (embedding) => {
+    console.log('✅ Face verified, closing modal and starting attendance');
+    setIsFaceModalVisible(false);
+
+    if (!pendingLocation) {
+      console.error('❌ No pending location found');
+      return;
+    }
+
     try {
-      const data = await startAttendance(loc.coords.latitude, loc.coords.longitude);
+      const data = await startAttendance(
+        pendingLocation.coords.latitude,
+        pendingLocation.coords.longitude,
+        embedding
+      );
       setSession({
         attendanceId: data.attendanceId,
         status: data.status,
@@ -151,8 +177,9 @@ export default function HomeScreen() {
         location: data.location,
       });
       startMotionValidation(data.attendanceId, setSession);
+      setPendingLocation(null);
     } catch (e) {
-      Alert.alert('Error', e.message);
+      Alert.alert('Identity Gate Error', e.message);
     }
   };
 
@@ -204,6 +231,15 @@ export default function HomeScreen() {
           locationStatus={locationStatus}
           onStart={handleStartAttendance}
           onEnd={handleEndAttendance}
+        />
+
+        <FaceVerificationModal
+          visible={isFaceModalVisible}
+          onVerify={handleFaceVerified}
+          onCancel={() => {
+            setIsFaceModalVisible(false);
+            setPendingLocation(null);
+          }}
         />
       </ScrollView>
     </SafeAreaView>
