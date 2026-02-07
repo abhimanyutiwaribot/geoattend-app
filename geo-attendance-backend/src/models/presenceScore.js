@@ -15,15 +15,14 @@ const PresenceScoreSchema = new mongoose.Schema({
   },
   timestamp: {
     type: Date,
-    default: Date.now,
-    index: true
+    default: Date.now
   },
 
   // Individual signal scores (0-100)
   signals: {
     geofence: {
       score: { type: Number, min: 0, max: 100 },
-      weight: { type: Number, default: 0.35 },
+      weight: { type: Number, default: 0.40 },
       data: {
         isWithin: Boolean,
         distance: Number,
@@ -32,7 +31,7 @@ const PresenceScoreSchema = new mongoose.Schema({
     },
     locationConsistency: {
       score: { type: Number, min: 0, max: 100 },
-      weight: { type: Number, default: 0.15 },
+      weight: { type: Number, default: 0.10 },
       data: {
         anomalies: [String],
         flags: [String],
@@ -41,7 +40,7 @@ const PresenceScoreSchema = new mongoose.Schema({
     },
     deviceActivity: {
       score: { type: Number, min: 0, max: 100 },
-      weight: { type: Number, default: 0.20 },
+      weight: { type: Number, default: 0.10 },
       data: {
         lastActivityMinutesAgo: Number,
         activityCount: Number,
@@ -50,21 +49,20 @@ const PresenceScoreSchema = new mongoose.Schema({
     },
     motionPattern: {
       score: { type: Number, min: 0, max: 100 },
-      weight: { type: Number, default: 0.15 },
+      weight: { type: Number, default: 0.10 },
       data: {
         movementLevel: String,
         isRealistic: Boolean,
         anomalyFlags: [String]
       }
     },
-    challengeSuccess: {
+    faceIdentity: {
       score: { type: Number, min: 0, max: 100 },
-      weight: { type: Number, default: 0.15 },
+      weight: { type: Number, default: 0.30 },
       data: {
-        totalChallenges: Number,
-        passedChallenges: Number,
-        failedChallenges: Number,
-        lastChallengeStatus: String
+        matchConfidence: Number,
+        isLivenessVerified: Boolean,
+        lastVerificationType: String
       }
     }
   },
