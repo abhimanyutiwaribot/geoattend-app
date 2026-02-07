@@ -1,41 +1,42 @@
 // const MotionLog = require("../models/motion");
 
 class MotionAnalysisService {
-    
+
     // Analyze motion patterns to detect human activity
     analyzeMotionPattern(gyroData, accelData) {
         try {
             // Validate input data
-            if (!gyroData || !accelData || 
-                !Array.isArray(gyroData) || !Array.isArray(accelData) ||
-                gyroData.length !== 3 || accelData.length !== 3) {
+            const isValid = (d) => Array.isArray(d) ? d.length === 3 : (d && typeof d === 'object' && d.x !== undefined);
+            if (!isValid(gyroData) || !isValid(accelData)) {
                 return {
                     isActive: false,
                     confidence: 0,
                     motionType: "unknown",
-                    gyroMagnitude: 0,   
+                    gyroMagnitude: 0,
                     accelMagnitude: 0
                 };
             }
 
-            const [gx, gy, gz] = gyroData;
-            const [ax, ay, az] = accelData;
+            const getCoords = (data) => {
+                if (Array.isArray(data)) return data;
+                if (data && typeof data === 'object') return [data.x || 0, data.y || 0, data.z || 0];
+                return [0, 0, 0];
+            };
+
+            const [gx, gy, gz] = getCoords(gyroData);
+            const [ax, ay, az] = getCoords(accelData);
 
             // Calculate motion intensity
-            const gyroMagnitude = Math.sqrt(gx*gx + gy*gy + gz*gz);
-            const accelMagnitude = Math.sqrt(ax*ax + ay*ay + az*az);
-            
-            // Debug logging
-            console.log(`🔍 Motion Analysis:`);
-            console.log(`   Gyro: [${gx}, ${gy}, ${gz}] → Magnitude: ${gyroMagnitude.toFixed(4)}`);
-            console.log(`   Accel: [${ax}, ${ay}, ${az}] → Magnitude: ${accelMagnitude.toFixed(4)}`);
-            console.log(`   Accel diff from 9.8: ${Math.abs(accelMagnitude - 9.8).toFixed(4)}`);
+            const gyroMagnitude = Math.sqrt(gx * gx + gy * gy + gz * gz);
+            const accelMagnitude = Math.sqrt(ax * ax + ay * ay + az * az);
 
             // Handle special cases
+            // Note: Accelerometer is in G-force units (1G ≈ 9.8 m/s²)
+            // At rest, magnitude should be ~1.0 (gravity)
             const isZeroData = gyroMagnitude === 0 && accelMagnitude === 0;
-            const isStationary = gyroMagnitude < 0.01 && Math.abs(accelMagnitude - 9.8) < 0.5;
+            const isStationary = gyroMagnitude < 0.01 && Math.abs(accelMagnitude - 1.0) < 0.1;
             const hasSignificantMotion = gyroMagnitude > 0.2;
-            const hasVehicleMotion = Math.abs(accelMagnitude - 9.8) > 2.0;
+            const hasVehicleMotion = Math.abs(accelMagnitude - 1.0) > 0.5; // Changed from 2.0
 
             let motionType = "stationary";
             let confidence = 0;
@@ -59,7 +60,11 @@ class MotionAnalysisService {
                 isActive = true;
             }
 
-            console.log(`   Result: ${motionType} (confidence: ${confidence}%, active: ${isActive})`);
+            // Only log on significant motion changes (not every data point)
+            const shouldLog = hasSignificantMotion || hasVehicleMotion || (Math.random() < 0.05); // 5% sampling
+            if (shouldLog) {
+                console.log(`🔍 Motion: ${motionType} (${confidence}%) | Gyro: ${gyroMagnitude.toFixed(3)} | Accel: ${accelMagnitude.toFixed(3)}G`);
+            }
 
             return {
                 isActive: isActive,

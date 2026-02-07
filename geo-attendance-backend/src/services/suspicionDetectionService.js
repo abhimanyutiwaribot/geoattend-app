@@ -21,12 +21,6 @@ class SuspicionDetectionService {
 
             const sessionDuration = (Date.now() - new Date(attendance.startTime)) / (1000 * 60); // minutes
 
-            // 1. Time-based random checks (every 20-30 minutes)
-            const timeBasedResult = this.checkTimeBasedRevalidation(sessionDuration);
-            if (timeBasedResult.requiresCheck) {
-                suspicionReasons.push("Random presence check");
-                suspicionScore += 50; // High enough to trigger
-            }
 
             // 2. Check session patterns (very short or very long sessions)
             const sessionPatternResult = this.checkSessionPatterns(attendance, sessionDuration);
@@ -66,40 +60,20 @@ class SuspicionDetectionService {
             }
 
             return {
-                isSuspicious: suspicionScore >= 30, // Threshold for triggering challenge
+                isSuspicious: suspicionScore >= 30, // Threshold for potential flagging
                 suspicionScore: suspicionScore,
-                reasons: suspicionReasons,
-                requiresRevalidation: suspicionScore >= 30
+                reasons: suspicionReasons
             };
         } catch (error) {
             console.error("Suspicion analysis error:", error);
             return {
                 isSuspicious: false,
                 suspicionScore: 0,
-                reasons: ["Analysis failed"],
-                requiresRevalidation: false
+                reasons: ["Analysis failed"]
             };
         }
     }
 
-    // Time-based random revalidation (every 2 hours)
-    checkTimeBasedRevalidation(sessionDurationMinutes) {
-        // Trigger random check every 120 minutes (2 hours)
-        const checkInterval = 120; // minutes
-
-        // Check if we've passed a check interval threshold
-        // This ensures checks at: 25min, 50min, 75min, etc.
-        const intervalsPassed = Math.floor(sessionDurationMinutes / checkInterval);
-        const timeSinceLastInterval = sessionDurationMinutes % checkInterval;
-
-        // Trigger if we're within 2 minutes after an interval (to account for timing variations)
-        // This means: 23-27min, 48-52min, 73-77min, etc.
-        if (intervalsPassed > 0 && timeSinceLastInterval >= checkInterval - 2 && timeSinceLastInterval <= checkInterval + 2) {
-            return { requiresCheck: true };
-        }
-
-        return { requiresCheck: false };
-    }
 
     // Check session patterns (suspicious durations)
     checkSessionPatterns(attendance, sessionDurationMinutes) {

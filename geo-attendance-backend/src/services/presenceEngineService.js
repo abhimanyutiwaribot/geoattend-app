@@ -1,21 +1,21 @@
 const PresenceScore = require('../models/presenceScore');
+const FaceProfile = require('../models/faceProfile');
 const AttendanceModel = require('../models/attendance');
 const LocationLog = require('../models/locationLog');
 const DeviceActivityService = require('./deviceActivityService');
 const LocationLogService = require('./locationLogService');
 const MotionModel = require('../models/motion');
-const CognitiveChallenge = require('../models/cognitiveChallenge');
 const GeofenceService = require('./geofenceService');
 
 class PresenceEngineService {
   constructor() {
     // Configurable weights (sum = 1.0)
     this.weights = {
-      geofence: 0.35,
-      locationConsistency: 0.15,
-      deviceActivity: 0.20,
-      motionPattern: 0.15,
-      challengeSuccess: 0.15
+      geofence: 0.40,
+      locationConsistency: 0.10,
+      deviceActivity: 0.10,
+      motionPattern: 0.10,
+      faceIdentity: 0.30
     };
 
     // Confidence thresholds
@@ -57,8 +57,8 @@ class PresenceEngineService {
       // 4. Motion Pattern Signal
       signals.motionPattern = await this.calculateMotionPatternSignal(userId, attendanceId);
 
-      // 5. Challenge Success Signal
-      signals.challengeSuccess = await this.calculateChallengeSuccessSignal(userId, attendanceId);
+      // 5. Face Identity Signal (Face Rec)
+      signals.faceIdentity = await this.calculateFaceIdentitySignal(userId, attendanceId);
 
       // Calculate weighted total score
       const totalScore = this.calculateWeightedScore(signals);
@@ -275,56 +275,42 @@ class PresenceEngineService {
     }
   }
 
-  /**
-   * Calculate challenge success signal (15% weight)
-   */
-  async calculateChallengeSuccessSignal(userId, attendanceId) {
-    try {
-      const challenges = await CognitiveChallenge.find({
-        userId,
-        attendanceId
-      });
 
-      if (challenges.length === 0) {
+  /**
+   * Calculate face identity signal (30% weight)
+   * Placeholder for Phase 4 implementation
+   */
+  async calculateFaceIdentitySignal(userId, attendanceId) {
+    try {
+      const profile = await FaceProfile.findOne({ userId });
+
+      if (!profile) {
         return {
-          score: 100, // No challenges = assume OK
-          weight: this.weights.challengeSuccess,
+          score: 50, // Default to neutral if no profile yet
+          weight: this.weights.faceIdentity,
           data: {
-            totalChallenges: 0,
-            passedChallenges: 0,
-            failedChallenges: 0,
-            lastChallengeStatus: null
+            matchConfidence: 0,
+            isLivenessVerified: false,
+            lastVerificationType: 'none'
           }
         };
       }
 
-      const passed = challenges.filter(c => c.status === 'passed').length;
-      const failed = challenges.filter(c => c.status === 'failed').length;
-      const total = challenges.length;
-
-      // Score: percentage of passed challenges
-      const score = total > 0 ? (passed / total) * 100 : 100;
-
-      const latestChallenge = challenges.sort((a, b) =>
-        b.createdAt - a.createdAt
-      )[0];
-
       return {
-        score: Math.round(score),
-        weight: this.weights.challengeSuccess,
+        score: profile.trustLevel,
+        weight: this.weights.faceIdentity,
         data: {
-          totalChallenges: total,
-          passedChallenges: passed,
-          failedChallenges: failed,
-          lastChallengeStatus: latestChallenge?.status || null
+          matchConfidence: profile.trustLevel / 100,
+          isLivenessVerified: true,
+          lastVerificationType: 'baseline_anchor'
         }
       };
     } catch (error) {
-      console.error('Challenge success signal error:', error);
+      console.error('Face identity signal error:', error);
       return {
         score: 100,
-        weight: this.weights.challengeSuccess,
-        data: { totalChallenges: 0, passedChallenges: 0, failedChallenges: 0, lastChallengeStatus: null }
+        weight: this.weights.faceIdentity,
+        data: { matchConfidence: 0, isLivenessVerified: false, lastVerificationType: 'none' }
       };
     }
   }
@@ -374,8 +360,8 @@ class PresenceEngineService {
       flags.push('suspicious_motion');
     }
 
-    if (signals.challengeSuccess.score < 50) {
-      flags.push('challenge_failures');
+    if (signals.faceIdentity.score < 70) {
+      flags.push('identity_unverified');
     }
 
     return flags;
