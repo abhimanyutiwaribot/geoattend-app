@@ -36,22 +36,22 @@ export class AttendanceBusinessLogic {
     this.clearTimers();
     this.hasShownWarning = false;
 
-    // Log entry event
-    if (this.session?.attendanceId) {
-      try {
-        await api.post('/attendance/log-event', {
-          attendanceId: this.session.attendanceId,
-          eventType: 'GEOFENCE_ENTRY',
-          location: {
-            latitude: geofenceStatus.location?.coords.latitude,
-            longitude: geofenceStatus.location?.coords.longitude
-          },
-          distance: geofenceStatus.distance
-        });
-      } catch (error) {
-        console.error('Error logging entry event:', error);
-      }
-    }
+    // Log entry event (disabled - endpoint not implemented)
+    // if (this.session?.attendanceId) {
+    //   try {
+    //     await api.post('/attendance/log-event', {
+    //       attendanceId: this.session.attendanceId,
+    //       eventType: 'GEOFENCE_ENTRY',
+    //       location: {
+    //         latitude: geofenceStatus.location?.coords.latitude,
+    //         longitude: geofenceStatus.location?.coords.longitude
+    //       },
+    //       distance: geofenceStatus.distance
+    //     });
+    //   } catch (error) {
+    //     console.error('Error logging entry event:', error);
+    //   }
+    // }
 
     // Business logic: Allow check-in, reset warnings, etc.
     return {
@@ -67,22 +67,22 @@ export class AttendanceBusinessLogic {
   async onExit(geofenceStatus) {
     console.log('⚠️ [BusinessLogic] User left office area');
 
-    // Log exit event
-    if (this.session?.attendanceId) {
-      try {
-        await api.post('/attendance/log-event', {
-          attendanceId: this.session.attendanceId,
-          eventType: 'GEOFENCE_EXIT',
-          location: {
-            latitude: geofenceStatus.location?.coords.latitude,
-            longitude: geofenceStatus.location?.coords.longitude
-          },
-          distance: geofenceStatus.distance
-        });
-      } catch (error) {
-        console.error('Error logging exit event:', error);
-      }
-    }
+    // Log exit event (disabled - endpoint not implemented)
+    // if (this.session?.attendanceId) {
+    //   try {
+    //     await api.post('/attendance/log-event', {
+    //       attendanceId: this.session.attendanceId,
+    //       eventType: 'GEOFENCE_EXIT',
+    //       location: {
+    //         latitude: geofenceStatus.location?.coords.latitude,
+    //         longitude: geofenceStatus.location?.coords.longitude
+    //       },
+    //       distance: geofenceStatus.distance
+    //     });
+    //   } catch (error) {
+    //     console.error('Error logging exit event:', error);
+    //   }
+    // }
 
     // Start warning timer
     this.warningTimer = setTimeout(() => {
