@@ -5,20 +5,63 @@ const MotionModel = require("../models/motion");
 const GeofenceService = require("../services/geofenceService")
 const MotionAnalysisService = require("../services/motionAnalysisService");
 const suspicionDetectionService = require("../services/suspicionDetectionService");
-const revalidationService = require("../services/revalidationService");
 const MockLocationDetectionService = require("../services/mockLocationDetectionService");
-const CognitiveService = require("../services/cognitiveService");
-const CognitiveChallenge = require("../models/cognitiveChallenge");
+const FaceVerificationService = require("../services/faceVerificationService");
 const attendanceRouter = express.Router();
 
 const mockLocationService = new MockLocationDetectionService();
-const cognitiveService = new CognitiveService();
 
 
 attendanceRouter.post("/start", authMiddleware, async function (req, res) {
     try {
-        const { lat, lng } = req.body;
+        const { lat, lng, identityEmbedding, identityImage } = req.body;
         const userId = req.user._id;
+
+        let faceEmbedding;
+
+        // Support both image (real) and embedding (simulation)
+        if (identityImage) {
+            try {
+                // REAL FACE RECOGNITION: Generate embedding from image
+                const RealFaceRecognitionService = require('../services/realFaceRecognitionService');
+                console.log('🎯 [Attendance] Processing real face image for verification');
+                faceEmbedding = await RealFaceRecognitionService.generateEmbedding(identityImage);
+            } catch (error) {
+                // Fall back to simulation if models aren't loaded
+                if (error.message && error.message.includes('models not loaded')) {
+                    console.log('⚠️  [Attendance] Models not available, using simulation mode');
+                    // Generate simulated embedding from image hash
+                    const crypto = require('crypto');
+                    const imageHash = crypto.createHash('md5').update(identityImage.substring(0, 1000)).digest('hex');
+                    const seed = parseInt(imageHash.substring(0, 8), 16);
+                    faceEmbedding = Array.from({ length: 128 }, (_, i) => Math.sin(seed + i * 0.1) * 2 - 1);
+                } else {
+                    throw error;
+                }
+            }
+        } else if (identityEmbedding) {
+            // SIMULATION MODE: Use provided embedding
+            console.log('🎭 [Attendance] Using simulated embedding for verification');
+            faceEmbedding = identityEmbedding;
+        } else {
+            return res.status(400).json({
+                success: false,
+                message: "Face verification data is required (image or embedding)",
+                error: "MISSING_IDENTITY_DATA"
+            });
+        }
+
+        // Identity Verification (Phase 4 MANDATORY GATE)
+        const faceVerification = await FaceVerificationService.verifyFace(userId, faceEmbedding);
+
+        if (!faceVerification.success) {
+            return res.status(401).json({
+                success: false,
+                message: "Identity verification failed. Please ensure your face is clearly visible.",
+                error: "IDENTITY_VERIFICATION_FAILED",
+                data: faceVerification.data
+            });
+        }
 
         // Check if user is within their assigned office geofence
         const geoFenceCheck = await GeofenceService.isWithinGeofence(lat, lng, userId);
@@ -134,6 +177,14 @@ attendanceRouter.post("/validate", authMiddleware, async function (req, res) {
         attendance.validationScore = Math.min(100, avgConfidence);
         await attendance.save();
 
+        // Trigger full presence engine score calculation for real-time dashboard updates
+        try {
+            const PresenceEngineService = require("../services/presenceEngineService");
+            await PresenceEngineService.calculatePresenceScore(userId, attendanceId);
+        } catch (pesError) {
+            console.error("⚠️ Background presence calculation failed:", pesError.message);
+        }
+
         res.json({
             success: true,
             message: "Presence Validation",
@@ -235,72 +286,6 @@ attendanceRouter.post("/geofence-status", authMiddleware, async function (req, r
     }
 });
 
-attendanceRouter.post("/check-suspicion", authMiddleware, async function (req, res) {
-    try {
-        const { attendanceId } = req.body;
-        const userId = req.user._id;
-
-        const suspicionAnalysis = await suspicionDetectionService.analyzeSuspicion(attendanceId, userId);
-
-        let challenge = null;
-
-        if (suspicionAnalysis.requiresRevalidation) {
-            challenge = await revalidationService.generateChallenge(
-                userId,
-                attendanceId,
-                "wordle"   // Fun Wordle-style challenge
-            );
-        }
-
-        res.json({
-            success: true,
-            data: {
-                suspicionAnalysis,
-                challenge: challenge?.success ? challenge : null
-            }
-        });
-    } catch (error) {
-        res.status(500).json({
-            success: false,
-            message: "Error checking suspicion",
-            error: error.message
-        });
-    }
-});
-
-// Add endpoint to handle challenge responses
-attendanceRouter.post("/validate-challenge", authMiddleware, async (req, res) => {
-    try {
-        const { challengeId, response } = req.body;
-        const userId = req.user._id;
-
-        const validationResult = await revalidationService.validateChallengeResponse(
-            challengeId,
-            response,
-            userId
-        );
-
-        if (validationResult.success && validationResult.isValid) {
-            // Update attendance status if challenge passed
-            await AttendanceModel.findOneAndUpdate(
-                { _id: req.body.attendanceId, userId: userId },
-                {
-                    status: "confirmed",
-                    revalidationPassed: true,
-                    validationScore: 100
-                }
-            );
-        }
-
-        res.json(validationResult);
-    } catch (error) {
-        res.status(500).json({
-            success: false,
-            message: "Error validating challenge",
-            error: error.message
-        });
-    }
-});
 
 attendanceRouter.get("/active-session", authMiddleware, async (req, res) => {
     try {
@@ -413,173 +398,5 @@ attendanceRouter.post('/validate-location', authMiddleware, async (req, res) => 
     }
 });
 
-// Generate cognitive challenge
-attendanceRouter.post('/generate-cognitive-challenge', authMiddleware, async (req, res) => {
-    try {
-        const { attendanceId } = req.body;
-        const userId = req.user._id;
-
-        // Verify attendance exists and belongs to user
-        console.log('Looking for attendance:', { attendanceId, userId });
-        const attendance = await AttendanceModel.findOne({
-            _id: attendanceId,
-            userId,
-            status: { $in: ['tentative', 'confirmed'] }
-        });
-
-        console.log('Found attendance:', attendance ? 'Yes' : 'No');
-
-        if (!attendance) {
-            return res.status(404).json({
-                success: false,
-                error: 'ATTENDANCE_NOT_FOUND',
-                message: 'Active attendance session not found'
-            });
-        }
-
-        // Random challenge type
-        const types = ['reaction_time', 'color_match', 'pattern_memory', 'math_quick'];
-        const challengeType = types[Math.floor(Math.random() * types.length)];
-
-        const challengeData = cognitiveService.generateChallenge(challengeType);
-
-        const challenge = new CognitiveChallenge({
-            userId,
-            attendanceId,
-            challengeType,
-            challengeData,
-            expiresAt: new Date(Date.now() + 30000) // 30 seconds
-        });
-
-        await challenge.save();
-
-        // Return challenge without answers
-        const clientChallengeData = { ...challengeData };
-        delete clientChallengeData.correctAnswer;
-        delete clientChallengeData.correctIndex;
-
-        res.json({
-            success: true,
-            data: {
-                challengeId: challenge._id,
-                challengeType,
-                challengeData: clientChallengeData,
-                expiresAt: challenge.expiresAt
-            }
-        });
-    } catch (error) {
-        console.error('Cognitive challenge generation error:', error);
-        res.status(500).json({
-            success: false,
-            message: 'Failed to generate challenge',
-            error: error.message,
-            stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
-        });
-    }
-});
-
-// Validate cognitive challenge response
-attendanceRouter.post('/validate-cognitive-challenge', authMiddleware, async (req, res) => {
-    try {
-        const { challengeId, response, responseTime } = req.body;
-        const userId = req.user._id;
-
-        const challenge = await CognitiveChallenge.findOne({
-            _id: challengeId,
-            userId,
-            status: 'pending'
-        });
-
-        if (!challenge) {
-            return res.status(404).json({
-                success: false,
-                error: 'CHALLENGE_NOT_FOUND',
-                message: 'Challenge not found or already completed'
-            });
-        }
-
-        if (new Date() > challenge.expiresAt) {
-            challenge.status = 'expired';
-            await challenge.save();
-            return res.status(400).json({
-                success: false,
-                error: 'CHALLENGE_EXPIRED',
-                message: 'Challenge has expired'
-            });
-        }
-
-        const isCorrect = cognitiveService.validateResponse(
-            challenge.challengeType,
-            challenge.challengeData,
-            response
-        );
-
-        // Reaction time should be human-like (100ms - 15000ms)
-        const isHumanTiming = responseTime >= 100 && responseTime <= 15000;
-
-        let failureReason = '';
-        if (!isCorrect) failureReason = 'Incorrect answer.';
-        else if (!isHumanTiming) {
-            if (responseTime < 100) failureReason = 'Response too fast (bot-like).';
-            else failureReason = 'Response too slow.';
-        }
-
-        console.log('Challenge validation:', {
-            challengeType: challenge.challengeType,
-            response,
-            responseTime,
-            isCorrect,
-            isHumanTiming,
-            failureReason,
-            challengeData: challenge.challengeData
-        });
-
-        challenge.userResponse = {
-            responseTime,
-            answer: response,
-            timestamp: new Date()
-        };
-        challenge.status = (isCorrect && isHumanTiming) ? 'passed' : 'failed';
-        await challenge.save();
-
-        // Update attendance validation score
-        if (challenge.status === 'passed') {
-            await AttendanceModel.findByIdAndUpdate(challenge.attendanceId, {
-                $inc: { validationScore: 10 },
-                status: 'confirmed'
-            });
-        } else {
-            await AttendanceModel.findByIdAndUpdate(challenge.attendanceId, {
-                $inc: { validationScore: -5 }
-            });
-        }
-
-        res.json({
-            success: true,
-            data: {
-                passed: challenge.status === 'passed',
-                responseTime,
-                isCorrect,
-                isHumanTiming,
-                message: challenge.status === 'passed'
-                    ? 'Challenge completed successfully!'
-                    : `Challenge failed: ${failureReason} Please try again next time.`
-            }
-        });
-    } catch (error) {
-        res.status(500).json({
-            success: false,
-            message: 'Failed to validate challenge',
-            error: error.message
-        });
-    }
-});
-
-/**
- * Helper to validate response timing (100ms - 15000ms is human range)
- */
-function isHumanTimingHelper(responseTime) {
-    return responseTime >= 100 && responseTime <= 15000;
-}
 
 module.exports = attendanceRouter;

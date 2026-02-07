@@ -3,7 +3,6 @@ const { adminAuthMiddleware, requireRole, requirePermission } = require("../midd
 const User = require("../models/user");
 const Attendance = require("../models/attendance");
 const MotionLog = require("../models/motion");
-const RevalidationChallenge = require("../models/revalidationChallenge");
 const GeoFenceModel = require("../models/officeGeofence");
 
 const adminRoutes = express.Router();
@@ -32,10 +31,7 @@ adminRoutes.get("/dashboard", requirePermission("canViewReports"), async (req, r
             Attendance.countDocuments({
                 startTime: { $gte: today, $lt: tomorrow }
             }),
-            Attendance.countDocuments({ status: "flagged" }),
-            RevalidationChallenge.countDocuments({
-                createdAt: { $gte: today, $lt: tomorrow }
-            })
+            Attendance.countDocuments({ status: "flagged" })
         ]);
 
         // Get weekly attendance trend
@@ -68,8 +64,7 @@ adminRoutes.get("/dashboard", requirePermission("canViewReports"), async (req, r
                     totalUsers,
                     activeSessions,
                     todayAttendances,
-                    suspiciousActivities,
-                    recentChallenges
+                    suspiciousActivities
                 },
                 weeklyTrend,
                 lastUpdated: new Date()
@@ -192,19 +187,11 @@ adminRoutes.get("/suspicious-activities", requirePermission("canViewSuspicious")
             .limit(limit * 1)
             .skip((page - 1) * limit);
 
-        const challenges = await RevalidationChallenge.find({
-            status: { $in: ["failed", "expired"] }
-        })
-            .populate("userId", "name email")
-            .populate("attendanceId")
-            .sort({ createdAt: -1 })
-            .limit(10);
 
         res.json({
             success: true,
             data: {
                 suspiciousAttendances,
-                failedChallenges: challenges,
                 lastUpdated: new Date()
             }
         });
