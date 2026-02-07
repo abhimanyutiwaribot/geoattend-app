@@ -14,7 +14,8 @@ require("dotenv").config();
 
 // Middleware
 app.use(cors()); // Enable CORS for admin panel
-app.use(express.json());
+app.use(express.json({ limit: '10mb' })); // Increased limit for face images
+app.use(express.urlencoded({ limit: '10mb', extended: true }));
 
 // Database connection
 connectDB();
