@@ -13,8 +13,7 @@ import HomeScreen from './src/screens/HomeScreen';
 import HistoryScreen from './src/screens/HistoryScreen';
 import ProfileScreen from './src/screens/ProfileScreen';
 import NotificationsScreen from './src/screens/NotificationsScreen';
-import WordleChallengeScreen from './src/screens/WordleChallengeScreen';
-import CognitiveChallengeScreen from './src/screens/CognitiveChallengeScreen';
+import FaceEnrollmentScreen from './src/screens/FaceEnrollmentScreen';
 import { AuthProvider, useAuth } from './src/context/AuthContext';
 
 const Tab = createMaterialTopTabNavigator();
@@ -83,8 +82,7 @@ function RootNavigator() {
       {isLoggedIn ? (
         <>
           <Stack.Screen name="Tabs" component={Tabs} />
-          <Stack.Screen name="WordleChallenge" component={WordleChallengeScreen} />
-          <Stack.Screen name="CognitiveChallenge" component={CognitiveChallengeScreen} />
+          <Stack.Screen name="FaceEnrollment" component={FaceEnrollmentScreen} />
         </>
       ) : (
         <>
