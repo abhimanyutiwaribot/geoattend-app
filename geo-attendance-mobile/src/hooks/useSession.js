@@ -62,10 +62,10 @@ export function useAttendanceSession() {
     }
   };
 
-  const endAttendance = async (attendanceId) => {
+  const endAttendance = async (attendanceId, extraData = {}) => {
     try {
       setLoading(true);
-      await api.post('/attendance/end', { attendanceId });
+      await api.post('/attendance/end', { attendanceId, ...extraData });
       return true;
     } catch (e) {
       throw new Error('Failed to end attendance');
