@@ -2,101 +2,30 @@ import React, { useEffect, useRef, useMemo } from 'react';
 import { StyleSheet, View, TouchableOpacity } from 'react-native';
 import MapView, { Circle, Polygon, PROVIDER_DEFAULT } from 'react-native-maps';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { useTheme } from '../context/ThemeContext';
 
 // Dark mode map style for Google Maps
 const darkMapStyle = [
-  {
-    "elementType": "geometry",
-    "stylers": [{ "color": "#1e293b" }]
-  },
-  {
-    "elementType": "labels.text.fill",
-    "stylers": [{ "color": "#94a3b8" }]
-  },
-  {
-    "elementType": "labels.text.stroke",
-    "stylers": [{ "color": "#020617" }]
-  },
-  {
-    "featureType": "administrative",
-    "elementType": "geometry",
-    "stylers": [{ "color": "#475569" }]
-  },
-  {
-    "featureType": "administrative.country",
-    "elementType": "labels.text.fill",
-    "stylers": [{ "color": "#cbd5e1" }]
-  },
-  {
-    "featureType": "administrative.locality",
-    "elementType": "labels.text.fill",
-    "stylers": [{ "color": "#e2e8f0" }]
-  },
-  {
-    "featureType": "poi",
-    "elementType": "labels.text.fill",
-    "stylers": [{ "color": "#64748b" }]
-  },
-  {
-    "featureType": "poi.park",
-    "elementType": "geometry",
-    "stylers": [{ "color": "#0f172a" }]
-  },
-  {
-    "featureType": "poi.park",
-    "elementType": "labels.text.fill",
-    "stylers": [{ "color": "#475569" }]
-  },
-  {
-    "featureType": "road",
-    "elementType": "geometry",
-    "stylers": [{ "color": "#334155" }]
-  },
-  {
-    "featureType": "road",
-    "elementType": "geometry.stroke",
-    "stylers": [{ "color": "#1e293b" }]
-  },
-  {
-    "featureType": "road.highway",
-    "elementType": "geometry",
-    "stylers": [{ "color": "#475569" }]
-  },
-  {
-    "featureType": "road.highway",
-    "elementType": "geometry.stroke",
-    "stylers": [{ "color": "#1e293b" }]
-  },
-  {
-    "featureType": "road.highway",
-    "elementType": "labels.text.fill",
-    "stylers": [{ "color": "#cbd5e1" }]
-  },
-  {
-    "featureType": "transit",
-    "elementType": "geometry",
-    "stylers": [{ "color": "#0f172a" }]
-  },
-  {
-    "featureType": "transit.station",
-    "elementType": "labels.text.fill",
-    "stylers": [{ "color": "#64748b" }]
-  },
-  {
-    "featureType": "water",
-    "elementType": "geometry",
-    "stylers": [{ "color": "#0c4a6e" }]
-  },
-  {
-    "featureType": "water",
-    "elementType": "labels.text.fill",
-    "stylers": [{ "color": "#475569" }]
-  },
-  {
-    "featureType": "water",
-    "elementType": "labels.text.stroke",
-    "stylers": [{ "color": "#020617" }]
-  }
+  { "elementType": "geometry", "stylers": [{ "color": "#1e293b" }] },
+  { "elementType": "labels.text.fill", "stylers": [{ "color": "#94a3b8" }] },
+  { "elementType": "labels.text.stroke", "stylers": [{ "color": "#020617" }] },
+  { "featureType": "administrative", "elementType": "geometry", "stylers": [{ "color": "#475569" }] },
+  { "featureType": "administrative.country", "elementType": "labels.text.fill", "stylers": [{ "color": "#cbd5e1" }] },
+  { "featureType": "administrative.locality", "elementType": "labels.text.fill", "stylers": [{ "color": "#e2e8f0" }] },
+  { "featureType": "poi", "elementType": "labels.text.fill", "stylers": [{ "color": "#64748b" }] },
+  { "featureType": "poi.park", "elementType": "geometry", "stylers": [{ "color": "#0f172a" }] },
+  { "featureType": "road", "elementType": "geometry", "stylers": [{ "color": "#334155" }] },
+  { "featureType": "road", "elementType": "geometry.stroke", "stylers": [{ "color": "#1e293b" }] },
+  { "featureType": "water", "elementType": "geometry", "stylers": [{ "color": "#0c4a6e" }] }
+];
+
+// Light mode clean map style
+const lightMapStyle = [
+  { "elementType": "geometry", "stylers": [{ "color": "#f1f5f9" }] },
+  { "elementType": "labels.text.fill", "stylers": [{ "color": "#64748b" }] },
+  { "elementType": "labels.text.stroke", "stylers": [{ "color": "#f8fafc" }] },
+  { "featureType": "road", "elementType": "geometry", "stylers": [{ "color": "#ffffff" }] },
+  { "featureType": "water", "elementType": "geometry", "stylers": [{ "color": "#e0f2fe" }] }
 ];
 
 export function AttendanceMap({
@@ -104,17 +33,16 @@ export function AttendanceMap({
   geofenceStatus,
   officeGeofence,
   onRequestLocation,
-  onMapInteractionChange
+  onMapInteractionChange,
+  fullScreen = false
 }) {
+  const { colors, isDark } = useTheme();
   const mapRef = useRef(null);
   const regionRef = useRef(null);
 
   // Calculate center for polygon geofences
   const getGeofenceCenter = () => {
-    if (!officeGeofence) {
-      return null;
-    }
-
+    if (!officeGeofence) return null;
     if (officeGeofence.type === 'polygon' && officeGeofence.polygon && officeGeofence.polygon.length > 0) {
       const latSum = officeGeofence.polygon.reduce((sum, p) => sum + p.lat, 0);
       const lngSum = officeGeofence.polygon.reduce((sum, p) => sum + p.lng, 0);
@@ -123,7 +51,6 @@ export function AttendanceMap({
         lng: lngSum / officeGeofence.polygon.length
       };
     }
-
     return officeGeofence.center || null;
   };
 
@@ -132,7 +59,6 @@ export function AttendanceMap({
   const initialRegion = useMemo(() => {
     const lat = currentLocation?.latitude || geofenceCenter?.lat || 28.6139;
     const lng = currentLocation?.longitude || geofenceCenter?.lng || 77.2090;
-
     return {
       latitude: lat,
       longitude: lng,
@@ -142,9 +68,7 @@ export function AttendanceMap({
   }, []);
 
   useEffect(() => {
-    if (!regionRef.current) {
-      regionRef.current = initialRegion;
-    }
+    if (!regionRef.current) regionRef.current = initialRegion;
   }, []);
 
   const isFirstLocation = useRef(true);
@@ -167,18 +91,10 @@ export function AttendanceMap({
   };
 
   const centerOnLocation = async () => {
-    console.log('Center button pressed', { currentLocation });
-
     if (!currentLocation && onRequestLocation) {
-      console.log('Fetching current location...');
       try {
         const location = await onRequestLocation(false, true);
-        if (!location || !location.coords) {
-          console.log('Failed to get location');
-          return;
-        }
-        console.log('Location fetched:', location.coords.latitude, location.coords.longitude);
-
+        if (!location || !location.coords) return;
         if (mapRef.current) {
           setTimeout(() => {
             mapRef.current.animateToRegion({
@@ -196,10 +112,7 @@ export function AttendanceMap({
       }
     }
 
-    if (!currentLocation) {
-      console.log('No current location available');
-      return;
-    }
+    if (!currentLocation) return;
 
     if (mapRef.current) {
       mapRef.current.animateToRegion({
@@ -208,12 +121,11 @@ export function AttendanceMap({
         latitudeDelta: regionRef.current?.latitudeDelta || 0.005,
         longitudeDelta: regionRef.current?.longitudeDelta || 0.005,
       }, 800);
-      console.log('Map centered to:', currentLocation.latitude, currentLocation.longitude);
     }
   };
 
   return (
-    <View style={getContainerStyle(geofenceStatus, officeGeofence)}>
+    <View style={fullScreen ? styles.fullScreenContainer : getContainerStyle(geofenceStatus, officeGeofence)}>
       <View style={styles.mapContainer}>
         <MapView
           ref={mapRef}
@@ -227,14 +139,10 @@ export function AttendanceMap({
           showsUserLocation={false}
           showsMyLocationButton={false}
           showsCompass={true}
-          rotateEnabled={false}
-          pitchEnabled={false}
-          scrollEnabled={true}
-          zoomEnabled={true}
-          customMapStyle={darkMapStyle}
+          rotateEnabled={true}
+          pitchEnabled={true}
+          customMapStyle={isDark ? darkMapStyle : lightMapStyle}
         >
-
-          {/* Office Geofence - Circle or Polygon */}
           {officeGeofence && (
             <>
               {officeGeofence.type === 'polygon' && officeGeofence.polygon ? (
@@ -262,40 +170,25 @@ export function AttendanceMap({
             </>
           )}
 
-          {/* User Location - Pulsing Circle */}
           {currentLocation && (
             <>
-              {/* Outer pulse ring */}
               <Circle
                 center={{
                   latitude: currentLocation.latitude,
                   longitude: currentLocation.longitude,
                 }}
                 radius={10}
-                fillColor={
-                  geofenceStatus?.isWithin
-                    ? 'rgba(34, 197, 94, 0.15)'
-                    : 'rgba(239, 68, 68, 0.15)'
-                }
-                strokeColor={
-                  geofenceStatus?.isWithin
-                    ? 'rgba(9, 24, 15, 0.4)'
-                    : 'rgba(239, 68, 68, 0.4)'
-                }
+                fillColor={geofenceStatus?.isWithin ? 'rgba(34, 197, 94, 0.15)' : 'rgba(239, 68, 68, 0.15)'}
+                strokeColor={geofenceStatus?.isWithin ? 'rgba(9, 24, 15, 0.4)' : 'rgba(255, 255, 255, 0.4)'}
                 strokeWidth={2}
               />
-              {/* Inner solid dot */}
               <Circle
                 center={{
                   latitude: currentLocation.latitude,
                   longitude: currentLocation.longitude,
                 }}
                 radius={3}
-                fillColor={
-                  geofenceStatus?.isWithin
-                    ? '#05170bff'
-                    : '#ef4444'
-                }
+                fillColor={geofenceStatus?.isWithin ? (isDark ? '#05170bff' : '#22c55e') : '#ef4444'}
                 strokeColor="#ffffff"
                 strokeWidth={1}
               />
@@ -303,24 +196,25 @@ export function AttendanceMap({
           )}
         </MapView>
 
-        {/* Center on Location Button */}
         <TouchableOpacity
-          style={styles.centerButton}
+          style={[styles.centerButton, { backgroundColor: colors.surface, borderColor: colors.border }]}
           onPress={centerOnLocation}
           activeOpacity={0.7}
         >
-          <MaterialCommunityIcons name="crosshairs-gps" size={24} color="#e5e7eb" />
+          <MaterialCommunityIcons name="crosshairs-gps" size={24} color={colors.textSecondary} />
         </TouchableOpacity>
       </View>
     </View>
   );
 }
 
-
 const styles = StyleSheet.create({
+  fullScreenContainer: {
+    flex: 1,
+    width: '100%',
+  },
   mapContainer: {
     flex: 1,
-    borderRadius: 16,
     overflow: 'hidden',
   },
   map: {
@@ -328,16 +222,14 @@ const styles = StyleSheet.create({
   },
   centerButton: {
     position: 'absolute',
-    bottom: 16,
-    right: 16,
-    backgroundColor: '#1e293b',
+    bottom: 128,
+    left: 20,
     width: 44,
     height: 44,
     borderRadius: 12,
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: '#334155',
     zIndex: 1000,
     elevation: 8,
     shadowColor: '#000',
@@ -345,26 +237,16 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.25,
     shadowRadius: 3.84,
   },
-  attribution: {
-    position: 'absolute',
-    bottom: 4,
-    left: 4,
-    backgroundColor: 'rgba(30, 41, 59, 0.7)',
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 4,
-  },
 });
 
 const getContainerStyle = (geofenceStatus, officeGeofence) => {
   let glowColor;
-
   if (!officeGeofence) {
     glowColor = '#64748b';
   } else if (geofenceStatus?.isWithin) {
-    glowColor = '#08f15eff';
+    glowColor = '#22c55e';
   } else {
-    glowColor = '#f13535ff';
+    glowColor = '#ef4444';
   }
 
   return {
@@ -375,8 +257,8 @@ const getContainerStyle = (geofenceStatus, officeGeofence) => {
     marginBottom: 32,
     shadowColor: glowColor,
     shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 1,
-    shadowRadius: 50,
-    elevation: 30,
+    shadowOpacity: 0.8,
+    shadowRadius: 30,
+    elevation: 20,
   };
 };
