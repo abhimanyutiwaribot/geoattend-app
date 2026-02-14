@@ -1,5 +1,7 @@
 import React from 'react';
-import { Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { Text, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import { useTheme } from '../context/ThemeContext';
 
 export function AttendanceButton({
   session,
@@ -9,37 +11,34 @@ export function AttendanceButton({
   onStart,
   onEnd
 }) {
-  if (!session) {
-    const isDisabled = loading ||
-      (geofenceStatus && geofenceStatus.isWithin === false) ||
-      locationStatus !== 'granted';
+  const { colors, isDark } = useTheme();
 
-    console.log('🔘 Start Attendance Button State:', {
-      loading,
-      geofenceIsWithin: geofenceStatus?.isWithin,
-      locationStatus,
-      isDisabled
-    });
+  if (!session) {
+    const isOutside = geofenceStatus && geofenceStatus.isWithin === false;
+    const isDisabled = loading || isOutside || locationStatus !== 'granted';
 
     return (
       <TouchableOpacity
         style={[
           styles.button,
-          styles.primary,
-          geofenceStatus && !geofenceStatus.isWithin && styles.buttonDisabled,
+          { backgroundColor: colors.primary },
+          isDisabled && [styles.buttonDisabled, { backgroundColor: isDark ? '#1e293b' : '#cbd5e1' }],
         ]}
-        onPress={() => {
-          console.log('🎯 Start Attendance button clicked!');
-          onStart();
-        }}
+        onPress={onStart}
         disabled={isDisabled}
       >
-        <Text style={styles.buttonText}>
+        <Ionicons
+          name={isOutside ? "lock-closed" : "finger-print"}
+          size={20}
+          color={isDark ? "#022c22" : "#ffffff"}
+          style={{ marginRight: 8 }}
+        />
+        <Text style={[styles.buttonText, { color: isDark ? "#022c22" : "#ffffff" }]}>
           {loading
-            ? 'Starting...'
-            : geofenceStatus && geofenceStatus.isWithin === false
-              ? 'Move closer to office to start'
-              : 'Start Attendance'}
+            ? 'Authenticating...'
+            : isOutside
+              ? 'Enter Office to Check In'
+              : 'Verifying & Check In'}
         </Text>
       </TouchableOpacity>
     );
@@ -47,12 +46,13 @@ export function AttendanceButton({
 
   return (
     <TouchableOpacity
-      style={[styles.button, styles.secondary]}
+      style={[styles.button, { backgroundColor: colors.dangerSoft, borderColor: colors.danger, borderWidth: 1 }]}
       onPress={onEnd}
       disabled={loading}
     >
-      <Text style={styles.buttonSecondaryText}>
-        {loading ? 'Ending...' : 'End Attendance'}
+      <Ionicons name="log-out-outline" size={20} color={colors.danger} style={{ marginRight: 8 }} />
+      <Text style={[styles.buttonSecondaryText, { color: colors.danger }]}>
+        {loading ? 'Closing Session...' : 'Check Out'}
       </Text>
     </TouchableOpacity>
   );
@@ -60,29 +60,26 @@ export function AttendanceButton({
 
 const styles = StyleSheet.create({
   button: {
-    paddingVertical: 14,
-    borderRadius: 999,
+    height: 56,
+    borderRadius: 16,
+    flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 12,
-  },
-  primary: {
-    backgroundColor: '#22c55e',
-  },
-  secondary: {
-    borderWidth: 1,
-    borderColor: '#4b5563',
+    justifyContent: 'center',
+    width: '100%',
   },
   buttonText: {
-    color: '#022c22',
-    fontWeight: '600',
+    fontWeight: '700',
     fontSize: 16,
+    letterSpacing: 0.2,
   },
   buttonSecondaryText: {
-    color: '#e5e7eb',
-    fontWeight: '500',
+    fontWeight: '700',
     fontSize: 16,
+    letterSpacing: 0.2,
   },
   buttonDisabled: {
-    backgroundColor: '#4b5563',
+    shadowOpacity: 0,
+    elevation: 0,
+    opacity: 0.5,
   },
 });
