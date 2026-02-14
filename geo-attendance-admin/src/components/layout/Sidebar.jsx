@@ -10,6 +10,7 @@ export default function Sidebar() {
     { name: 'Suspicious', href: '/suspicious', icon: AlertIcon },
     { name: 'Users', href: '/users', icon: UsersIcon },
     { name: 'Geofences', href: '/geofences', icon: LocationIcon },
+    { name: 'Leaves', href: '/leaves', icon: CalendarIcon },
     { name: 'Reports', href: '/reports', icon: ChartIcon },
   ];
 
@@ -107,6 +108,14 @@ function RadioIcon({ className }) {
   return (
     <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 11c0 3.517-1.009 6.799-2.753 9.571m-3.44-2.04l.054-.09A10.003 10.003 0 0012 3m0 0a10.003 10.003 0 016.961 8.439m-1.074 4.172a10.003 10.003 0 01-4.212 4.43m-1.25.561a10 10 0 01-6.113-1.889m7.574-10.656a2 2 0 112.828 2.828M8 12a4 4 0 118 0 4 4 0 01-8 0z" />
+    </svg>
+  );
+}
+
+function CalendarIcon({ className }) {
+  return (
+    <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
     </svg>
   );
 }
