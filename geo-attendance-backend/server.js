@@ -8,12 +8,14 @@ const presenceRouter = require("./src/routes/presenceRoute.js");
 const adminRoutes = require("./src/routes/adminRoutes.js");
 const adminAuthRoutes = require("./src/routes/adminAuthRoutes.js");
 const adminPresenceRouter = require("./src/routes/adminPresenceRoute.js");
+const leaveRoutes = require("./src/routes/leaveRoutes.js");
+
 
 const app = express();
 require("dotenv").config();
 
-// Middleware
-app.use(cors()); // Enable CORS for admin panel
+app.use(cors());
+
 app.use(express.json({ limit: '10mb' })); // Increased limit for face images
 app.use(express.urlencoded({ limit: '10mb', extended: true }));
 
@@ -28,6 +30,8 @@ app.use("/api/v1/presence", presenceRouter); // Presence scoring
 app.use("/api/v1/admin/auth", adminAuthRoutes);
 app.use("/api/v1/admin", adminRoutes);
 app.use("/api/v1/admin/presence", adminPresenceRouter); // Admin presence monitoring
+app.use("/api/v1/leaves", leaveRoutes); // Leave management
+
 
 
 // Health check route
@@ -47,7 +51,7 @@ app.get("/health", (req, res) => {
 //     });
 // });
 
-const PORT = process.env.PORT || 8000;
+const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
 
