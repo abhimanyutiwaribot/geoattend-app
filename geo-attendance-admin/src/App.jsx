@@ -8,6 +8,7 @@ import Attendance from './pages/Attendance';
 import Reports from './pages/Reports';
 import Suspicious from './pages/Suspicious';
 import PresenceDashboard from './pages/PresenceDashboard';
+import LeaveManagement from './pages/LeaveManagement';
 import './index.css';
 
 function PrivateRoute({ children }) {
@@ -84,6 +85,11 @@ function AppRoutes() {
       <Route path="/presence" element={
         <PrivateRoute>
           <PresenceDashboard />
+        </PrivateRoute>
+      } />
+      <Route path="/leaves" element={
+        <PrivateRoute>
+          <LeaveManagement />
         </PrivateRoute>
       } />
       <Route path="/" element={<Navigate to="/dashboard" />} />
