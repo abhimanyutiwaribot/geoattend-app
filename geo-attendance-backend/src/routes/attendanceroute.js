@@ -106,6 +106,19 @@ attendanceRouter.post("/start", authMiddleware, async function (req, res) {
 
         await attendance.save();
 
+        // Create initial LocationLog entry for immediate PresenceEngine tracking
+        const LocationLogService = require('../services/locationLogService');
+        try {
+            await LocationLogService.logLocation(
+                userId,
+                attendance._id,
+                { lat, lng },
+                { source: 'check_in_baseline' }
+            );
+        } catch (logError) {
+            console.error('⚠️ Failed to create initial location log:', logError.message);
+        }
+
         res.status(201).json({
             success: true,
             message: "Attendance session started",
@@ -144,6 +157,29 @@ attendanceRouter.post("/validate", authMiddleware, async function (req, res) {
             return res.status(404).json({
                 success: false,
                 message: "Attendance session not found"
+            });
+        }
+
+        // Check for approved leave - pause validation if on leave
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const LeaveRequest = require('../models/leaveRequest');
+        const onLeave = await LeaveRequest.findOne({
+            userId,
+            status: 'approved',
+            startDate: { $lte: new Date() },
+            endDate: { $gte: today }
+        });
+
+        if (onLeave) {
+            return res.json({
+                success: true,
+                status: 'on_leave',
+                message: 'Validation paused: user is on approved leave',
+                data: {
+                    attendanceStatus: attendance.status,
+                    validationScore: attendance.validationScore
+                }
             });
         }
 
@@ -222,13 +258,35 @@ attendanceRouter.post("/end", authMiddleware, async function (req, res) {
             });
         }
 
+        const { exitReason, remarks } = req.body;
+
         attendance.endTime = new Date();
         attendance.status = "completed";
+        attendance.exitReason = exitReason || 'manual';
+        attendance.remarks = remarks || '';
 
         //Calculate duration
         const duration = (attendance.endTime - attendance.startTime) / (1000 * 60); // minutes
 
         attendance.totalDuration = duration;
+
+        if (exitReason === 'emergency') {
+            try {
+                const LeaveRequest = require('../models/leaveRequest');
+                const emergencyLeave = new LeaveRequest({
+                    userId: attendance.userId,
+                    startDate: new Date(),
+                    endDate: new Date(),
+                    type: 'emergency',
+                    reason: remarks || 'Emergency exit from active session',
+                    status: 'pending'
+                });
+                await emergencyLeave.save();
+                console.log(`🚑 Emergency leave request created for User: ${attendance.userId}`);
+            } catch (leaveErr) {
+                console.error('⚠️ Failed to auto-create emergency leave:', leaveErr.message);
+            }
+        }
 
         await attendance.save();
 

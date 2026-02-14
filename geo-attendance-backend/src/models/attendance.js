@@ -2,13 +2,14 @@ const mongoose = require("mongoose");
 
 const AttendanceTable = new mongoose.Schema({
   userId: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
-  sessionId: { type: String, unique: true,
-  sparse: true
+  sessionId: {
+    type: String, unique: true,
+    sparse: true
   }, // For tracking entire sessions
-  status: { 
-    type: String, 
-    enum: ["tentative", "confirmed", "flagged", "completed", "invalid"], 
-    default: "tentative" 
+  status: {
+    type: String,
+    enum: ["tentative", "confirmed", "flagged", "completed", "invalid"],
+    default: "tentative"
   },
   location: {
     lat: { type: Number, required: true },
@@ -19,7 +20,13 @@ const AttendanceTable = new mongoose.Schema({
   endTime: { type: Date },
   totalDuration: { type: Number }, // in minutes
   validationScore: { type: Number, default: 0 }, // 0-100 confidence score
-  revalidationPassed: { type: Boolean, default: false }
+  revalidationPassed: { type: Boolean, default: false },
+  exitReason: {
+    type: String,
+    enum: ['manual', 'auto_checkout', 'emergency', 'system_error'],
+    default: 'manual'
+  },
+  remarks: { type: String }
 }, { timestamps: true });
 
 const AttendanceModel = mongoose.model("Attendance", AttendanceTable);

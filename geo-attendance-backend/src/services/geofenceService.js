@@ -76,6 +76,7 @@ class GeofenceService {
                 }
 
                 if (isInside) {
+                    console.log(`✅ [Geofence] User at (${userLat}, ${userLng}) IS INSIDE ${geofence.name}. Dist: ${distance}m`);
                     return {
                         isWithin: true,
                         geofence: geofence,
@@ -85,6 +86,7 @@ class GeofenceService {
             }
 
             // Return closest geofence info even when outside
+            console.log(`📍 [Geofence] User at (${userLat}, ${userLng}) is OUTSIDE all ${geofences.length} checked geofences. Closest: ${closestGeofence?.name}, Dist: ${closestDistance}m`);
             return {
                 isWithin: false,
                 geofence: closestGeofence,

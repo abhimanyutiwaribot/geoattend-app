@@ -76,7 +76,7 @@ const PresenceScoreSchema = new mongoose.Schema({
   },
   confidence: {
     type: String,
-    enum: ['present', 'uncertain', 'absent'],
+    enum: ['present', 'uncertain', 'absent', 'on_leave'],
     required: true
   },
 

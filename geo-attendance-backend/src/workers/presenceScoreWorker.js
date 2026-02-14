@@ -19,7 +19,7 @@ class PresenceScoreWorker {
     console.log('🤖 Starting Presence Score Worker...');
 
     // Run every 15 minutes: */15 * * * *
-    this.cronJob = cron.schedule('*/15 * * * *', async () => {
+    this.cronJob = cron.schedule('*/1 * * * *', async () => {
       await this.calculateScoresForActiveSessions();
     });
 

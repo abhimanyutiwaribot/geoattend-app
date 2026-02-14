@@ -4,6 +4,9 @@ const meRoute = express.Router();
 
 meRoute.get("/me", authMiddleware, async (req, res) => {
     try {
+        const FaceProfile = require("../models/faceProfile");
+        const faceProfile = await FaceProfile.findOne({ userId: req.user._id, isActive: true });
+
         res.json({
             success: true,
             message: "User profile retrieved successfully",
@@ -14,7 +17,12 @@ meRoute.get("/me", authMiddleware, async (req, res) => {
                     email: req.user.email,
                     deviceID: req.user.deviceID,
                     loginCount: req.user.loginCount,
-                    lastLogin: req.user.lastLogin
+                    lastLogin: req.user.lastLogin,
+                    biometric: {
+                        faceEmbedding: faceProfile ? !!faceProfile.baselineEmbedding : false,
+                        lastVerified: faceProfile?.lastVerified || null,
+                        trustLevel: faceProfile?.trustLevel || 0
+                    }
                 }
             }
         });

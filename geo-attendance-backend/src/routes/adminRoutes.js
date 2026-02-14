@@ -1,5 +1,5 @@
 const express = require("express");
-const { adminAuthMiddleware, requireRole, requirePermission } = require("../middleware/adminauthMiddleware");
+const { adminAuthMiddleware, requireRole, requirePermission } = require("../middleware/adminAuthMiddleware");
 const User = require("../models/user");
 const Attendance = require("../models/attendance");
 const MotionLog = require("../models/motion");

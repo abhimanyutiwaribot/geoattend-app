@@ -43,6 +43,24 @@ class PresenceEngineService {
         throw new Error('Active attendance session not found');
       }
 
+      // Check for approved leave
+      const today = new Date();
+      const LeaveRequest = require('../models/leaveRequest');
+      const onLeave = await LeaveRequest.findOne({
+        userId,
+        status: 'approved',
+        startDate: { $lte: today },
+        endDate: { $gte: today }
+      });
+
+      if (onLeave) {
+        return {
+          success: true,
+          status: 'on_leave',
+          message: 'User is on approved leave today'
+        };
+      }
+
       const signals = {};
 
       // 1. Geofence Signal
@@ -117,13 +135,18 @@ class PresenceEngineService {
    */
   async calculateGeofenceSignal(userId, attendanceId) {
     try {
+      const mongoose = require('mongoose');
+      // Ensure we're using ObjectId for the query
+      const queryAttendanceId = typeof attendanceId === 'string' ? new mongoose.Types.ObjectId(attendanceId) : attendanceId;
+
       // Get most recent location
       const recentLocation = await LocationLog.findOne({
         userId,
-        attendanceId
+        attendanceId: queryAttendanceId
       }).sort({ timestamp: -1 });
 
       if (!recentLocation) {
+        console.log(`⚠️ [PresenceEngine] No LocationLog found for User: ${userId}, Session: ${attendanceId}`);
         return {
           score: 0,
           weight: this.weights.geofence,

@@ -5,7 +5,7 @@ const LocationLog = require("../models/locationLog");
 const DeviceActivity = require("../models/deviceActivity");
 const User = require("../models/user");
 const PresenceEngineService = require("../services/presenceEngineService");
-const { adminAuthMiddleware } = require("../middleware/adminauthMiddleware");
+const { adminAuthMiddleware } = require("../middleware/adminAuthMiddleware");
 
 const adminPresenceRouter = express.Router();
 
@@ -15,14 +15,30 @@ const adminPresenceRouter = express.Router();
  */
 adminPresenceRouter.get('/dashboard', adminAuthMiddleware, async (req, res) => {
   try {
-    // Get all active attendance sessions
+    const LeaveRequest = require('../models/leaveRequest');
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+
+    // 1. Get all active attendance sessions
     const activeSessions = await AttendanceModel.find({
-      status: { $in: ['tentative', 'confirmed'] }
+      status: { $in: ['tentative', 'confirmed', 'flagged'] }
     })
       .populate('userId', 'name email employeeId')
-      .sort({ checkInTime: -1 });
+      .sort({ startTime: -1 });
 
-    // Get latest presence score for each session
+    // 2. Get all users on approved leave today
+    const usersOnLeave = await LeaveRequest.find({
+      status: 'approved',
+      startDate: { $lte: new Date() },
+      endDate: { $gte: new Date() }
+    }).populate('userId', 'name email employeeId');
+
+    // 3. Get total active users count for percentage/absent calculation
+    const totalUsersCount = await User.countDocuments({ isActive: true });
+
+    // 4. Get latest presence score for each active session
     const dashboardData = await Promise.all(
       activeSessions.map(async (session) => {
         const latestScore = await PresenceScore.findOne({
@@ -32,7 +48,7 @@ adminPresenceRouter.get('/dashboard', adminAuthMiddleware, async (req, res) => {
         return {
           attendanceId: session._id,
           user: session.userId,
-          checkInTime: session.checkInTime,
+          startTime: session.startTime,
           status: session.status,
           validationScore: session.validationScore,
           presenceScore: latestScore ? {
@@ -42,26 +58,55 @@ adminPresenceRouter.get('/dashboard', adminAuthMiddleware, async (req, res) => {
             flags: latestScore.flags,
             lastUpdated: latestScore.timestamp,
             signals: {
-              geofence: latestScore.signals.geofence.score,
-              locationConsistency: latestScore.signals.locationConsistency.score,
-              deviceActivity: latestScore.signals.deviceActivity.score,
-              motionPattern: latestScore.signals.motionPattern.score,
-              challengeSuccess: latestScore.signals.challengeSuccess.score
+              geofence: latestScore.signals?.geofence?.score ?? 0,
+              locationConsistency: latestScore.signals?.locationConsistency?.score ?? 0,
+              deviceActivity: latestScore.signals?.deviceActivity?.score ?? 0,
+              motionPattern: latestScore.signals?.motionPattern?.score ?? 0,
+              faceIdentity: latestScore.signals?.faceIdentity?.score ?? 0
             }
           } : null
         };
       })
     );
 
+    // 5. Calculate absence (Total - Active - OnLeave)
+    const activeUserIds = activeSessions.map(s => s.userId?._id?.toString() || "");
+    const onLeaveUserIds = usersOnLeave.map(l => l.userId?._id?.toString() || "");
+
+    const allActiveUsers = await User.find({ isActive: true }).select('name email employeeId');
+
+    const absentUsers = allActiveUsers.filter(u =>
+      !activeUserIds.includes(u._id.toString()) &&
+      !onLeaveUserIds.includes(u._id.toString())
+    );
+
+    const onLeaveCount = usersOnLeave.length;
+    const presentCount = activeSessions.length;
+    const absentCount = absentUsers.length;
+
     res.json({
       success: true,
       data: {
-        totalActive: activeSessions.length,
+        stats: {
+          totalUsers: allActiveUsers.length,
+          totalActive: presentCount,
+          totalOnLeave: onLeaveCount,
+          totalAbsent: absentCount,
+          presentRate: allActiveUsers.length > 0 ? (presentCount / allActiveUsers.length) * 100 : 0
+        },
         sessions: dashboardData,
+        onLeave: usersOnLeave.map(l => ({
+          user: l.userId,
+          type: l.type,
+          reason: l.reason,
+          until: l.endDate
+        })),
+        absent: absentUsers,
         timestamp: new Date()
       }
     });
   } catch (error) {
+    console.error('Presence Dashboard Error:', error);
     res.status(500).json({
       success: false,
       message: 'Failed to fetch dashboard data',
