@@ -1,106 +1,184 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, ScrollView, Switch, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useIsFocused } from '@react-navigation/native';
 import * as Device from 'expo-device';
 import { api } from '../api/client';
 import { useAuth } from '../context/AuthContext';
+import { useTheme } from '../context/ThemeContext';
 import { Ionicons } from '@expo/vector-icons';
 
 export default function ProfileScreen() {
   const navigation = useNavigation();
+  const isFocused = useIsFocused();
   const { user, logout } = useAuth();
+  const { colors, toggleTheme, isDark } = useTheme();
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
 
+  const fetchProfile = async () => {
+    try {
+      const res = await api.get('/user/me');
+      setProfile(res.data.data.user);
+    } catch (e) {
+      console.log('Error fetching profile:', e.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    const fetchProfile = async () => {
-      try {
-        const res = await api.get('/user/me');
-        setProfile(res.data.data.user);
-      } catch (e) {
-        // ignore
-      } finally {
-        setLoading(false);
-      }
-    };
+    if (isFocused) {
+      fetchProfile();
+    }
+  }, [isFocused]);
 
-    fetchProfile();
-  }, []);
+  const deviceName = Device.deviceName || Device.modelName || 'Authorized Device';
 
-  const deviceName = Device.deviceName || Device.modelName || 'Unknown device';
+  const ProfileHeader = () => (
+    <View style={[styles.headerCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+      <View style={styles.avatarContainer}>
+        <View style={[styles.avatar, { backgroundColor: colors.primary }]}>
+          <Text style={[styles.avatarText, { color: isDark ? '#022c22' : '#ffffff' }]}>
+            {(profile?.name || user?.name || '?')[0].toUpperCase()}
+          </Text>
+        </View>
+        <TouchableOpacity style={[styles.editAvatar, { borderColor: colors.surface }]}>
+          <Ionicons name="camera" size={16} color="#ffffff" />
+        </TouchableOpacity>
+      </View>
+      <View style={styles.headerInfo}>
+        <Text style={[styles.userName, { color: colors.text }]}>{profile?.name || user?.name || 'User'}</Text>
+        <View style={[styles.roleBadge, { backgroundColor: isDark ? 'rgba(51, 65, 85, 0.5)' : '#e2e8f0' }]}>
+          <Text style={[styles.roleText, { color: colors.textSecondary }]}>Employee</Text>
+        </View>
+      </View>
+    </View>
+  );
+
+  const InfoRow = ({ label, value, icon }) => (
+    <View style={styles.infoRow}>
+      <View style={styles.infoLeft}>
+        <View style={[styles.iconBox, { backgroundColor: isDark ? 'rgba(51, 65, 85, 0.3)' : '#f1f5f9' }]}>
+          <Ionicons name={icon} size={18} color={colors.textMuted} />
+        </View>
+        <Text style={[styles.infoLabel, { color: colors.textSecondary }]}>{label}</Text>
+      </View>
+      <Text style={[styles.infoValue, { color: colors.text }]} numberOfLines={1}>{value}</Text>
+    </View>
+  );
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        <Text style={styles.title}>Profile</Text>
-        <Text style={styles.subtitle}>Your account details and device info.</Text>
+        <View style={styles.topBar}>
+          <Text style={[styles.pageTitle, { color: colors.text }]}>Account</Text>
+          <TouchableOpacity
+            style={[styles.settingsBtn, { backgroundColor: colors.surface, borderColor: colors.border }]}
+            onPress={() => navigation.navigate('Notifications')}
+          >
+            <Ionicons name="notifications-outline" size={22} color={colors.text} />
+          </TouchableOpacity>
+        </View>
 
         {loading ? (
-          <ActivityIndicator style={{ marginTop: 16 }} color="#22c55e" />
+          <ActivityIndicator style={{ marginTop: 100 }} color={colors.primary} />
         ) : (
           <>
-            <View style={styles.card}>
-              <Text style={styles.label}>
-                Name: <Text style={styles.value}>{profile?.name || user?.name || '-'}</Text>
-              </Text>
-              <Text style={styles.label}>
-                Email: <Text style={styles.value}>{profile?.email || user?.email || '-'}</Text>
-              </Text>
-              <Text style={styles.label}>
-                Device ID: <Text style={styles.value}>{profile?.deviceID || '-'}</Text>
-              </Text>
-              <Text style={[styles.label, { marginTop: 8 }]}>
-                This device: <Text style={styles.value}>{deviceName}</Text>
-              </Text>
+            <ProfileHeader />
+
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Digital Identity</Text>
+              <View style={[styles.groupCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+                <InfoRow label="Email" value={profile?.email || user?.email || '-'} icon="mail-outline" />
+                <View style={[styles.rowDivider, { backgroundColor: colors.border }]} />
+                <InfoRow label="Device Status" value={`Verified (${deviceName})`} icon="phone-portrait-outline" />
+              </View>
             </View>
 
             <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Biometric Identity</Text>
+              <Text style={styles.sectionTitle}>Preferences</Text>
+              <View style={[styles.actionCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+                <View style={styles.actionLeft}>
+                  <View style={[styles.actionIconBox, { backgroundColor: isDark ? 'rgba(59, 130, 246, 0.1)' : 'rgba(59, 130, 246, 0.05)' }]}>
+                    <Ionicons name={isDark ? "moon" : "sunny"} size={20} color={colors.accent} />
+                  </View>
+                  <View>
+                    <Text style={[styles.actionTitle, { color: colors.text }]}>Dark Mode</Text>
+                    <Text style={[styles.actionSubtitle, { color: colors.textSecondary }]}>
+                      {isDark ? 'Switch to light themes' : 'Switch to dark themes'}
+                    </Text>
+                  </View>
+                </View>
+                <Switch
+                  value={isDark}
+                  onValueChange={toggleTheme}
+                  trackColor={{ false: '#cbd5e1', true: '#22c55e' }}
+                  thumbColor={Platform.OS === 'ios' ? '#ffffff' : isDark ? '#ffffff' : '#f4f3f4'}
+                />
+              </View>
+            </View>
+
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Security & Access</Text>
               <TouchableOpacity
-                style={styles.biometricButton}
+                style={[styles.actionCard, { backgroundColor: colors.surface, borderColor: colors.border }]}
                 onPress={() => navigation.navigate('FaceEnrollment')}
               >
-                <View style={styles.biometricLeft}>
-                  {profile?.biometric?.faceEmbedding ? (
-                    <>
-                      <Ionicons name="checkmark-circle" size={24} color="#22c55e" />
-                      <View>
-                        <Text style={styles.biometricText}>Face ID Enrolled</Text>
-                        <Text style={styles.biometricSubtext}>
-                          {new Date(profile.biometric.enrolledAt).toLocaleDateString()}
-                        </Text>
-                      </View>
-                    </>
-                  ) : (
-                    <>
-                      <Ionicons name="scan-outline" size={24} color="#f59e0b" />
-                      <View>
-                        <Text style={styles.biometricText}>Enroll Face ID</Text>
-                        <Text style={styles.biometricSubtext}>Required for attendance</Text>
-                      </View>
-                    </>
-                  )}
+                <View style={styles.actionLeft}>
+                  <View style={[styles.actionIconBox, { backgroundColor: profile?.biometric?.faceEmbedding ? 'rgba(34, 197, 94, 0.1)' : colors.warningSoft }]}>
+                    <Ionicons
+                      name={profile?.biometric?.faceEmbedding ? "shield-checkmark" : "shield-outline"}
+                      size={20}
+                      color={profile?.biometric?.faceEmbedding ? colors.primary : colors.warning}
+                    />
+                  </View>
+                  <View>
+                    <Text style={[styles.actionTitle, { color: colors.text }]}>Active Biometrics</Text>
+                    <Text style={[styles.actionSubtitle, { color: colors.textSecondary }]}>
+                      {profile?.biometric?.faceEmbedding ? 'Face ID Verified' : 'Face ID Not Found'}
+                    </Text>
+                  </View>
                 </View>
-                <Ionicons name="chevron-forward" size={20} color="#94a3b8" />
+                <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
               </TouchableOpacity>
-              <Text style={styles.helperText}>
-                {profile?.biometric?.faceEmbedding
-                  ? 'Tap to update your face enrollment if needed.'
-                  : 'Used for secure background identity verification.'}
-              </Text>
             </View>
+
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Management</Text>
+              <View style={styles.actionRow}>
+                <TouchableOpacity
+                  style={[styles.gridBtn, { backgroundColor: colors.surface, borderColor: colors.border }]}
+                  onPress={() => navigation.navigate('LeaveRequest')}
+                >
+                  <View style={[styles.gridIcon, { backgroundColor: colors.primarySoft }]}>
+                    <Ionicons name="calendar" size={22} color={colors.primary} />
+                  </View>
+                  <Text style={[styles.gridText, { color: colors.text }]}>Request Leave</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[styles.gridBtn, { backgroundColor: colors.surface, borderColor: colors.border }]}
+                  onPress={() => navigation.navigate('LeaveHistory')}
+                >
+                  <View style={[styles.gridIcon, { backgroundColor: colors.accentSoft }]}>
+                    <Ionicons name="list" size={22} color={colors.accent} />
+                  </View>
+                  <Text style={[styles.gridText, { color: colors.text }]}>Leave History</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+
+            <TouchableOpacity style={[styles.logoutBtn, { borderColor: colors.danger, backgroundColor: colors.dangerSoft }]} onPress={logout}>
+              <Ionicons name="log-out" size={18} color={colors.danger} />
+              <Text style={styles.logoutText}>Sign Out From Device</Text>
+            </TouchableOpacity>
           </>
         )}
-
-        <TouchableOpacity style={styles.logoutButton} onPress={logout}>
-          <Ionicons name="log-out-outline" size={20} color="#fecaca" />
-          <Text style={styles.logoutText}>Logout</Text>
-        </TouchableOpacity>
       </ScrollView>
     </SafeAreaView>
   );
@@ -109,98 +187,198 @@ export default function ProfileScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#020617',
   },
   scrollView: {
     flex: 1,
   },
   scrollContent: {
     padding: 24,
-    paddingBottom: 100, // Extra padding for tab bar
+    paddingBottom: 120,
   },
-  title: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: '#e5e7eb',
-    marginBottom: 4,
+  topBar: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 24,
   },
-  subtitle: {
-    fontSize: 14,
-    color: '#9ca3af',
+  pageTitle: {
+    fontSize: 28,
+    fontWeight: '800',
+    letterSpacing: -0.5,
   },
-  card: {
-    backgroundColor: '#1e293b',
-    borderRadius: 12,
-    padding: 16,
-    marginTop: 16,
+  settingsBtn: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
   },
-  section: {
-    marginTop: 24,
-  },
-  sectionTitle: {
-    color: '#94a3b8',
-    fontSize: 12,
-    fontWeight: 'bold',
-    textTransform: 'uppercase',
-    letterSpacing: 1,
-    marginBottom: 12,
-  },
-  biometricButton: {
+  headerCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: '#1e293b',
-    padding: 16,
-    borderRadius: 12,
+    borderRadius: 24,
+    padding: 24,
+    marginBottom: 32,
     borderWidth: 1,
-    borderColor: '#334155',
   },
-  biometricLeft: {
+  avatarContainer: {
+    position: 'relative',
+  },
+  avatar: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  avatarText: {
+    fontSize: 28,
+    fontWeight: '800',
+  },
+  editAvatar: {
+    position: 'absolute',
+    bottom: 0,
+    right: 0,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: '#3b82f6',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+  },
+  headerInfo: {
+    marginLeft: 20,
+  },
+  userName: {
+    fontSize: 20,
+    fontWeight: '700',
+    marginBottom: 4,
+  },
+  roleBadge: {
+    alignSelf: 'flex-start',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 6,
+  },
+  roleText: {
+    fontSize: 10,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+  },
+  section: {
+    marginBottom: 32,
+  },
+  sectionTitle: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: '#475569',
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+    marginBottom: 16,
+    marginLeft: 4,
+  },
+  groupCard: {
+    borderRadius: 20,
+    padding: 20,
+    borderWidth: 1,
+  },
+  infoRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 4,
+  },
+  infoLeft: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
   },
-  biometricText: {
-    color: '#e5e7eb',
-    fontSize: 16,
+  iconBox: {
+    width: 32,
+    height: 32,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  infoLabel: {
+    fontSize: 14,
     fontWeight: '600',
   },
-  biometricSubtext: {
-    color: '#94a3b8',
+  infoValue: {
+    fontSize: 14,
+    fontWeight: '700',
+    maxWidth: '50%',
+  },
+  rowDivider: {
+    height: 1,
+    marginVertical: 12,
+  },
+  actionCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: 16,
+    borderRadius: 20,
+    borderWidth: 1,
+  },
+  actionLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 16,
+  },
+  actionIconBox: {
+    width: 44,
+    height: 44,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  actionTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+  },
+  actionSubtitle: {
     fontSize: 12,
     marginTop: 2,
   },
-  helperText: {
-    color: '#64748b',
-    fontSize: 12,
-    marginTop: 8,
-    fontStyle: 'italic',
-  },
-  label: {
-    color: '#9ca3af',
-    fontSize: 14,
-    marginBottom: 4,
-  },
-  value: {
-    color: '#e5e7eb',
-    fontWeight: '500',
-  },
-  logoutButton: {
-    marginTop: 32,
-    paddingVertical: 14,
-    paddingHorizontal: 24,
-    borderRadius: 12,
-    borderWidth: 2,
-    borderColor: '#b91c1c',
-    backgroundColor: 'rgba(185, 28, 28, 0.1)',
-    alignItems: 'center',
+  actionRow: {
     flexDirection: 'row',
+    gap: 16,
+  },
+  gridBtn: {
+    flex: 1,
+    borderRadius: 20,
+    padding: 20,
+    alignItems: 'center',
+    borderWidth: 1,
+  },
+  gridIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 16,
+    alignItems: 'center',
     justifyContent: 'center',
-    gap: 8,
+    marginBottom: 12,
+  },
+  gridText: {
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  logoutBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+    paddingVertical: 18,
+    borderRadius: 20,
+    borderWidth: 1,
+    marginTop: 8,
   },
   logoutText: {
-    color: '#fecaca',
-    fontWeight: '600',
-    fontSize: 16,
+    color: '#ef4444',
+    fontSize: 15,
+    fontWeight: '700',
   },
 });

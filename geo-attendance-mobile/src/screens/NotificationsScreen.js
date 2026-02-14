@@ -1,10 +1,13 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, FlatList } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, FlatList, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useIsFocused, useNavigation } from '@react-navigation/native';
 import { getLocalNotifications, clearLocalNotifications } from '../utils/notifications';
+import { Ionicons } from '@expo/vector-icons';
+import { useTheme } from '../context/ThemeContext';
 
 export default function NotificationsScreen() {
+  const { colors, isDark } = useTheme();
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(false);
   const isFocused = useIsFocused();
@@ -29,7 +32,6 @@ export default function NotificationsScreen() {
   };
 
   const handleOpen = (item) => {
-    // Navigate to Wordle if data has challenge info
     if (item.data?.challengeId && item.data?.attendanceId) {
       navigation.navigate('WordleChallenge', {
         challengeId: item.data.challengeId,
@@ -40,38 +42,79 @@ export default function NotificationsScreen() {
     }
   };
 
-  const renderItem = ({ item }) => (
-    <TouchableOpacity style={styles.card} onPress={() => handleOpen(item)}>
-      <View style={styles.cardHeader}>
-        <Text style={styles.title}>{item.title}</Text>
-        <Text style={styles.time}>{new Date(item.timestamp).toLocaleTimeString()}</Text>
-      </View>
-      <Text style={styles.body}>{item.body}</Text>
-    </TouchableOpacity>
-  );
+  const renderItem = ({ item }) => {
+    const isNew = item.timestamp > Date.now() - 3600000; // Last hour
+    const isAlert = item.title.toLowerCase().includes('alert');
+
+    return (
+      <TouchableOpacity
+        style={[
+          styles.card,
+          { backgroundColor: colors.surface, borderColor: colors.border },
+          isNew && { borderColor: isAlert ? colors.danger : colors.primary }
+        ]}
+        onPress={() => handleOpen(item)}
+      >
+        <View style={[styles.cardIconBox, { backgroundColor: isAlert ? colors.dangerSoft : colors.primarySoft }]}>
+          <Ionicons
+            name={isAlert ? "alert-circle" : "notifications"}
+            size={22}
+            color={isAlert ? colors.danger : colors.primary}
+          />
+        </View>
+        <View style={styles.cardContent}>
+          <View style={styles.cardHeader}>
+            <Text style={[styles.cardTitle, { color: colors.text }]}>{item.title}</Text>
+            <Text style={[styles.cardTime, { color: colors.textMuted }]}>
+              {new Date(item.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+            </Text>
+          </View>
+          <Text style={[styles.cardBody, { color: colors.textSecondary }]} numberOfLines={2}>{item.body}</Text>
+        </View>
+      </TouchableOpacity>
+    );
+  };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
       <View style={styles.header}>
-        <Text style={styles.screenTitle}>Notifications</Text>
-        <TouchableOpacity style={styles.clearBtn} onPress={handleClear} disabled={items.length === 0}>
-          <Text style={styles.clearText}>Clear</Text>
+        <View style={styles.headerTitleRow}>
+          <TouchableOpacity onPress={() => navigation.goBack()} style={[styles.backBtn, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+            <Ionicons name="arrow-back" size={24} color={colors.text} />
+          </TouchableOpacity>
+          <Text style={[styles.screenTitle, { color: colors.text }]}>Alerts</Text>
+        </View>
+        <TouchableOpacity
+          style={[styles.clearBtn, { backgroundColor: isDark ? 'rgba(51, 65, 85, 0.3)' : '#e2e8f0' }, items.length === 0 && { opacity: 0.5 }]}
+          onPress={handleClear}
+          disabled={items.length === 0}
+        >
+          <Text style={[styles.clearText, { color: colors.textSecondary }]}>Clear All</Text>
         </TouchableOpacity>
       </View>
 
-      <FlatList
-        data={items}
-        keyExtractor={(item, idx) => item.id || `${idx}-${item.timestamp}`}
-        renderItem={renderItem}
-        refreshing={loading}
-        onRefresh={load}
-        contentContainerStyle={{ paddingVertical: 12, flexGrow: 1 }}
-        ListEmptyComponent={
-          <View style={styles.empty}>
-            <Text style={styles.emptyText}>No notifications yet.</Text>
-          </View>
-        }
-      />
+      {loading && items.length === 0 ? (
+        <ActivityIndicator style={{ marginTop: 100 }} color={colors.primary} />
+      ) : (
+        <FlatList
+          data={items}
+          keyExtractor={(item, idx) => item.id || `${idx}-${item.timestamp}`}
+          renderItem={renderItem}
+          refreshing={loading}
+          onRefresh={load}
+          contentContainerStyle={styles.listContent}
+          showsVerticalScrollIndicator={false}
+          ListEmptyComponent={
+            <View style={styles.empty}>
+              <View style={[styles.emptyIconBox, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+                <Ionicons name="notifications-off-outline" size={48} color={colors.textMuted} />
+              </View>
+              <Text style={[styles.emptyTitle, { color: colors.text }]}>All caught up!</Text>
+              <Text style={[styles.emptyText, { color: colors.textSecondary }]}>You don't have any new alerts at the moment.</Text>
+            </View>
+          }
+        />
+      )}
     </SafeAreaView>
   );
 }
@@ -79,64 +122,107 @@ export default function NotificationsScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#020617',
-    padding: 16,
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 12,
+    padding: 24,
+    paddingBottom: 16,
+  },
+  headerTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 16,
+  },
+  backBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
   },
   screenTitle: {
-    color: '#e5e7eb',
-    fontSize: 20,
-    fontWeight: '700',
+    fontSize: 24,
+    fontWeight: '800',
+    letterSpacing: -0.5,
   },
   clearBtn: {
     paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 999,
-    borderWidth: 1,
-    borderColor: '#4b5563',
+    paddingVertical: 6,
+    borderRadius: 8,
   },
   clearText: {
-    color: '#9ca3af',
-    fontWeight: '600',
+    fontSize: 12,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+  },
+  listContent: {
+    padding: 20,
+    paddingTop: 0,
+    flexGrow: 1,
+    paddingBottom: 100,
   },
   card: {
-    backgroundColor: '#0b1224',
-    borderRadius: 12,
-    padding: 14,
+    borderRadius: 20,
+    padding: 16,
+    flexDirection: 'row',
+    gap: 16,
+    marginBottom: 12,
     borderWidth: 1,
-    borderColor: '#1f2937',
-    marginBottom: 10,
+  },
+  cardIconBox: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  cardContent: {
+    flex: 1,
   },
   cardHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 6,
+    alignItems: 'baseline',
+    marginBottom: 4,
   },
-  title: {
-    color: '#e5e7eb',
-    fontSize: 16,
+  cardTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+  },
+  cardTime: {
+    fontSize: 11,
     fontWeight: '600',
   },
-  time: {
-    color: '#9ca3af',
-    fontSize: 12,
-  },
-  body: {
-    color: '#cbd5e1',
-    fontSize: 14,
+  cardBody: {
+    fontSize: 13,
+    lineHeight: 18,
   },
   empty: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
+    paddingBottom: 80,
+  },
+  emptyIconBox: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 20,
+    borderWidth: 1,
+  },
+  emptyTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    marginBottom: 8,
   },
   emptyText: {
-    color: '#6b7280',
+    textAlign: 'center',
+    maxWidth: '70%',
+    lineHeight: 20,
   },
 });
-

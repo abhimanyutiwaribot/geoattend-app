@@ -1,11 +1,14 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as Device from 'expo-device';
 import { api } from '../api/client';
 import { useAuth } from '../context/AuthContext';
+import { useTheme } from '../context/ThemeContext';
+import { Ionicons } from '@expo/vector-icons';
 
 export default function RegisterScreen({ navigation }) {
+  const { colors, isDark } = useTheme();
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -18,7 +21,7 @@ export default function RegisterScreen({ navigation }) {
     setError('');
 
     if (!name || !email || !password || !confirmPassword) {
-      setError('Please fill all fields');
+      setError('Please fill all fields to create your account');
       return;
     }
 
@@ -39,74 +42,106 @@ export default function RegisterScreen({ navigation }) {
         deviceID,
       });
 
-      // Auto-login after successful registration
       await login({ email, password, deviceID });
-
-      // Navigate to face enrollment (mandatory setup)
       navigation.replace('FaceEnrollment');
-      setLoading(false);
     } catch (e) {
-      setLoading(false);
-      const msg = e.response?.data?.message || e.response?.data?.error || e.message || 'Register failed';
+      const msg = e.response?.data?.message || e.response?.data?.error || e.message || 'Registration failed';
       setError(msg);
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
-    <SafeAreaView style={styles.container}>
-      <Text style={styles.title}>Create account</Text>
-      <Text style={styles.subtitle}>Register to start using Geo Attendance</Text>
-
-      <TextInput
-        style={styles.input}
-        placeholder="Full name"
-        placeholderTextColor="#9ca3af"
-        autoCapitalize="words"
-        value={name}
-        onChangeText={setName}
-      />
-
-      <TextInput
-        style={styles.input}
-        placeholder="Email"
-        placeholderTextColor="#9ca3af"
-        autoCapitalize="none"
-        keyboardType="email-address"
-        value={email}
-        onChangeText={setEmail}
-      />
-
-      <TextInput
-        style={styles.input}
-        placeholder="Password"
-        placeholderTextColor="#9ca3af"
-        secureTextEntry
-        value={password}
-        onChangeText={setPassword}
-      />
-
-      <TextInput
-        style={styles.input}
-        placeholder="Confirm password"
-        placeholderTextColor="#9ca3af"
-        secureTextEntry
-        value={confirmPassword}
-        onChangeText={setConfirmPassword}
-      />
-
-      {error ? <Text style={styles.errorText}>{error}</Text> : null}
-
-      <TouchableOpacity style={styles.button} onPress={handleRegister} disabled={loading}>
-        <Text style={styles.buttonText}>{loading ? 'Creating account...' : 'Register'}</Text>
-      </TouchableOpacity>
-
-      <TouchableOpacity
-        style={styles.linkButton}
-        onPress={() => navigation.replace('Login')}
-        disabled={loading}
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={styles.keyboardView}
       >
-        <Text style={styles.linkText}>Already have an account? Login</Text>
-      </TouchableOpacity>
+        <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+          <View style={styles.brandSection}>
+            <Text style={[styles.title, { color: colors.text }]}>Join GeoPresence</Text>
+            <Text style={[styles.subtitle, { color: colors.textSecondary }]}>Create your secure workforce profile</Text>
+          </View>
+
+          <View style={styles.formSection}>
+            <View style={[styles.inputContainer, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+              <Ionicons name="person-outline" size={20} color={colors.textMuted} style={styles.inputIcon} />
+              <TextInput
+                style={[styles.input, { color: colors.text }]}
+                placeholder="Full Name"
+                placeholderTextColor={colors.textMuted}
+                autoCapitalize="words"
+                value={name}
+                onChangeText={setName}
+              />
+            </View>
+
+            <View style={[styles.inputContainer, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+              <Ionicons name="mail-outline" size={20} color={colors.textMuted} style={styles.inputIcon} />
+              <TextInput
+                style={[styles.input, { color: colors.text }]}
+                placeholder="Work Email"
+                placeholderTextColor={colors.textMuted}
+                autoCapitalize="none"
+                keyboardType="email-address"
+                value={email}
+                onChangeText={setEmail}
+              />
+            </View>
+
+            <View style={[styles.inputContainer, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+              <Ionicons name="lock-closed-outline" size={20} color={colors.textMuted} style={styles.inputIcon} />
+              <TextInput
+                style={[styles.input, { color: colors.text }]}
+                placeholder="Password"
+                placeholderTextColor={colors.textMuted}
+                secureTextEntry
+                value={password}
+                onChangeText={setPassword}
+              />
+            </View>
+
+            <View style={[styles.inputContainer, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+              <Ionicons name="shield-outline" size={20} color={colors.textMuted} style={styles.inputIcon} />
+              <TextInput
+                style={[styles.input, { color: colors.text }]}
+                placeholder="Confirm Password"
+                placeholderTextColor={colors.textMuted}
+                secureTextEntry
+                value={confirmPassword}
+                onChangeText={setConfirmPassword}
+              />
+            </View>
+
+            {error ? (
+              <View style={[styles.errorBox, { backgroundColor: colors.dangerSoft }]}>
+                <Ionicons name="alert-circle" size={16} color={colors.danger} />
+                <Text style={[styles.errorText, { color: colors.danger }]}>{error}</Text>
+              </View>
+            ) : null}
+
+            <TouchableOpacity
+              style={[styles.button, { backgroundColor: colors.primary }, loading && styles.disabledButton]}
+              onPress={handleRegister}
+              disabled={loading}
+            >
+              {loading ? (
+                <ActivityIndicator color={isDark ? "#022c22" : "#ffffff"} />
+              ) : (
+                <Text style={[styles.buttonText, { color: isDark ? "#022c22" : "#ffffff" }]}>Register Now</Text>
+              )}
+            </TouchableOpacity>
+
+            <View style={styles.footer}>
+              <Text style={[styles.footerText, { color: colors.textSecondary }]}>Already have an account?</Text>
+              <TouchableOpacity onPress={() => navigation.replace('Login')}>
+                <Text style={[styles.linkText, { color: colors.primary }]}>Sign In</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
@@ -114,56 +149,92 @@ export default function RegisterScreen({ navigation }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#020617',
-    paddingHorizontal: 24,
+  },
+  keyboardView: {
+    flex: 1,
+  },
+  scrollContent: {
+    paddingHorizontal: 32,
+    paddingTop: 60,
+    paddingBottom: 40,
     justifyContent: 'center',
+    flexGrow: 1,
+  },
+  brandSection: {
+    alignItems: 'center',
+    marginBottom: 40,
   },
   title: {
-    fontSize: 28,
-    fontWeight: '700',
-    color: '#e5e7eb',
-    marginBottom: 4,
+    fontSize: 30,
+    fontWeight: '800',
+    letterSpacing: -1,
   },
   subtitle: {
     fontSize: 14,
-    color: '#9ca3af',
-    marginBottom: 24,
+    marginTop: 6,
+    fontWeight: '500',
+    textAlign: 'center',
+  },
+  formSection: {
+    gap: 0,
+  },
+  inputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderRadius: 16,
+    borderWidth: 1,
+    marginBottom: 16,
+    paddingHorizontal: 16,
+  },
+  inputIcon: {
+    marginRight: 12,
   },
   input: {
-    backgroundColor: '#020617',
-    borderWidth: 1,
-    borderColor: '#1f2937',
-    borderRadius: 12,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    color: '#e5e7eb',
-    marginBottom: 14,
+    flex: 1,
+    paddingVertical: 14,
+    fontSize: 15,
+    fontWeight: '500',
   },
   button: {
-    backgroundColor: '#22c55e',
-    paddingVertical: 14,
-    borderRadius: 999,
+    paddingVertical: 18,
+    borderRadius: 16,
     alignItems: 'center',
-    marginTop: 8,
+    marginTop: 12,
+    shadowOpacity: 0.2,
+    shadowRadius: 10,
+    elevation: 5,
+  },
+  disabledButton: {
+    opacity: 0.6,
   },
   buttonText: {
-    color: '#022c22',
-    fontWeight: '600',
+    fontWeight: '800',
     fontSize: 16,
   },
-  errorText: {
-    color: '#fca5a5',
-    marginBottom: 8,
-    fontSize: 13,
-  },
-  linkButton: {
-    marginTop: 16,
+  errorBox: {
+    flexDirection: 'row',
     alignItems: 'center',
+    gap: 8,
+    marginBottom: 16,
+    padding: 12,
+    borderRadius: 12,
   },
-  linkText: {
-    color: '#9ca3af',
+  errorText: {
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  footer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: 24,
+    gap: 8,
+  },
+  footerText: {
     fontSize: 14,
   },
+  linkText: {
+    fontSize: 14,
+    fontWeight: '700',
+  },
 });
-
-
