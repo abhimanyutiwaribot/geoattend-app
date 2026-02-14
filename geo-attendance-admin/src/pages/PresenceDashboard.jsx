@@ -89,170 +89,178 @@ export default function PresenceDashboard() {
         </div>
 
         {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          <div className="card">
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 rounded-lg bg-primary-500/20 flex items-center justify-center text-2xl">
-                👥
-              </div>
-              <div>
-                <p className="text-slate-400 text-sm">Active Sessions</p>
-                <p className="text-3xl font-bold text-white">{dashboardData?.totalActive || 0}</p>
-              </div>
+        <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4">
+          <div className="card !p-4">
+            <p className="text-slate-400 text-xs mb-1 uppercase tracking-wider">Total Users</p>
+            <div className="flex items-end justify-between">
+              <p className="text-2xl font-bold text-white">{dashboardData?.stats?.totalUsers || 0}</p>
+              <div className="text-slate-500 text-xl">👥</div>
             </div>
           </div>
 
-          <div className="card">
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 rounded-lg bg-green-500/20 flex items-center justify-center text-2xl">
-                ✅
-              </div>
-              <div>
-                <p className="text-slate-400 text-sm">Present</p>
-                <p className="text-3xl font-bold text-green-400">
-                  {dashboardData?.sessions.filter(s => s.presenceScore?.confidence === 'present').length || 0}
-                </p>
-              </div>
+          <div className="card !p-4 border-l-4 border-l-green-500">
+            <p className="text-slate-400 text-xs mb-1 uppercase tracking-wider">Present</p>
+            <div className="flex items-end justify-between">
+              <p className="text-2xl font-bold text-green-400">{dashboardData?.stats?.totalActive || 0}</p>
+              <div className="text-green-500/50 text-xl">🏠</div>
             </div>
           </div>
 
-          <div className="card">
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 rounded-lg bg-yellow-500/20 flex items-center justify-center text-2xl">
-                ⚠️
-              </div>
-              <div>
-                <p className="text-slate-400 text-sm">Uncertain</p>
-                <p className="text-3xl font-bold text-yellow-400">
-                  {dashboardData?.sessions.filter(s => s.presenceScore?.confidence === 'uncertain').length || 0}
-                </p>
-              </div>
+          <div className="card !p-4 border-l-4 border-l-blue-500">
+            <p className="text-slate-400 text-xs mb-1 uppercase tracking-wider">On Leave</p>
+            <div className="flex items-end justify-between">
+              <p className="text-2xl font-bold text-blue-400">{dashboardData?.stats?.totalOnLeave || 0}</p>
+              <div className="text-blue-500/50 text-xl">🏖️</div>
             </div>
           </div>
 
-          <div className="card">
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 rounded-lg bg-red-500/20 flex items-center justify-center text-2xl">
-                🚨
-              </div>
-              <div>
-                <p className="text-slate-400 text-sm">High Risk</p>
-                <p className="text-3xl font-bold text-red-400">
-                  {dashboardData?.sessions.filter(s => s.presenceScore?.riskLevel === 'high').length || 0}
-                </p>
-              </div>
+          <div className="card !p-4 border-l-4 border-l-slate-500">
+            <p className="text-slate-400 text-xs mb-1 uppercase tracking-wider">Absent</p>
+            <div className="flex items-end justify-between">
+              <p className="text-2xl font-bold text-slate-300">{dashboardData?.stats?.totalAbsent || 0}</p>
+              <div className="text-slate-500 text-xl">❓</div>
+            </div>
+          </div>
+
+          <div className="card !p-4 border-l-4 border-l-yellow-500">
+            <p className="text-slate-400 text-xs mb-1 uppercase tracking-wider">Uncertain</p>
+            <div className="flex items-end justify-between">
+              <p className="text-2xl font-bold text-yellow-400">
+                {dashboardData?.sessions.filter(s => s.presenceScore?.confidence === 'uncertain').length || 0}
+              </p>
+              <div className="text-yellow-500/50 text-xl">⚠️</div>
+            </div>
+          </div>
+
+          <div className="card !p-4 border-l-4 border-l-red-500">
+            <p className="text-slate-400 text-xs mb-1 uppercase tracking-wider">High Risk</p>
+            <div className="flex items-end justify-between">
+              <p className="text-2xl font-bold text-red-400">
+                {dashboardData?.sessions.filter(s => s.presenceScore?.riskLevel === 'high').length || 0}
+              </p>
+              <div className="text-red-500/50 text-xl">🚨</div>
             </div>
           </div>
         </div>
 
-        {/* Active Sessions Table */}
-        <div className="card">
-          <h3 className="text-xl font-semibold text-white mb-4">Active Sessions</h3>
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="border-b border-slate-700">
-                  <th className="text-left py-3 px-4 text-slate-400 font-medium text-sm">Employee</th>
-                  <th className="text-left py-3 px-4 text-slate-400 font-medium text-sm">Check-in</th>
-                  <th className="text-left py-3 px-4 text-slate-400 font-medium text-sm">Score</th>
-                  <th className="text-left py-3 px-4 text-slate-400 font-medium text-sm">Confidence</th>
-                  <th className="text-left py-3 px-4 text-slate-400 font-medium text-sm">Risk</th>
-                  <th className="text-left py-3 px-4 text-slate-400 font-medium text-sm">Signals</th>
-                  <th className="text-left py-3 px-4 text-slate-400 font-medium text-sm">Flags</th>
-                  <th className="text-left py-3 px-4 text-slate-400 font-medium text-sm">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {dashboardData?.sessions.map((session) => (
-                  <tr
-                    key={session.attendanceId}
-                    className={`border-b border-slate-700/50 hover:bg-slate-800/50 transition-colors ${session.presenceScore?.riskLevel === 'high' ? 'bg-red-500/5' : ''
-                      }`}
-                  >
-                    <td className="py-4 px-4">
-                      <div>
-                        <p className="text-white font-medium">{session.user?.name}</p>
-                        <p className="text-slate-400 text-sm">{session.user?.email}</p>
-                      </div>
-                    </td>
-                    <td className="py-4 px-4 text-slate-300">
-                      {new Date(session.checkInTime).toLocaleTimeString()}
-                    </td>
-                    <td className="py-4 px-4">
-                      {session.presenceScore ? (
-                        <span className={`px-3 py-1 rounded-lg border font-bold ${getScoreColor(session.presenceScore.totalScore)}`}>
-                          {session.presenceScore.totalScore}
-                        </span>
-                      ) : (
-                        <span className="text-slate-500">Calculating...</span>
-                      )}
-                    </td>
-                    <td className="py-4 px-4">
-                      {session.presenceScore ? (
-                        <span className={`px-3 py-1 rounded-lg border text-xs font-semibold uppercase ${getConfidenceBadge(session.presenceScore.confidence)}`}>
-                          {session.presenceScore.confidence}
-                        </span>
-                      ) : '-'}
-                    </td>
-                    <td className="py-4 px-4">
-                      {session.presenceScore ? (
-                        <span className={`px-3 py-1 rounded-lg border text-xs font-semibold uppercase ${getRiskBadge(session.presenceScore.riskLevel)}`}>
-                          {session.presenceScore.riskLevel}
-                        </span>
-                      ) : '-'}
-                    </td>
-                    <td className="py-4 px-4">
-                      {session.presenceScore?.signals && (
-                        <div className="flex flex-col gap-1 w-24">
-                          <div className="h-1.5 bg-slate-700 rounded-full overflow-hidden" title="Geofence">
-                            <div
-                              className="h-full bg-gradient-to-r from-green-500 to-green-400 transition-all"
-                              style={{ width: `${session.presenceScore.signals.geofence}%` }}
-                            ></div>
-                          </div>
-                          <div className="h-1.5 bg-slate-700 rounded-full overflow-hidden" title="Location">
-                            <div
-                              className="h-full bg-gradient-to-r from-blue-500 to-blue-400 transition-all"
-                              style={{ width: `${session.presenceScore.signals.locationConsistency}%` }}
-                            ></div>
-                          </div>
-                          <div className="h-1.5 bg-slate-700 rounded-full overflow-hidden" title="Activity">
-                            <div
-                              className="h-full bg-gradient-to-r from-purple-500 to-purple-400 transition-all"
-                              style={{ width: `${session.presenceScore.signals.deviceActivity}%` }}
-                            ></div>
-                          </div>
-                          <div className="h-1.5 bg-slate-700 rounded-full overflow-hidden" title="Motion">
-                            <div
-                              className="h-full bg-gradient-to-r from-yellow-500 to-yellow-400 transition-all"
-                              style={{ width: `${session.presenceScore.signals.motionPattern}%` }}
-                            ></div>
-                          </div>
-                        </div>
-                      )}
-                    </td>
-                    <td className="py-4 px-4">
-                      {session.presenceScore?.flags.length > 0 ? (
-                        <div className="flex flex-wrap gap-1">
-                          {session.presenceScore.flags.map((flag, idx) => (
-                            <span key={idx} className="px-2 py-1 bg-red-500/20 text-red-400 rounded text-xs">
-                              {flag.replace(/_/g, ' ')}
-                            </span>
-                          ))}
-                        </div>
-                      ) : (
-                        <span className="text-green-400">✓ No flags</span>
-                      )}
-                    </td>
-                    <td className="py-4 px-4">
-                      <button className="btn btn-sm btn-primary">
-                        View Details
-                      </button>
-                    </td>
+        {/* Lists Grid */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Active Sessions Table */}
+          <div className="card lg:col-span-2">
+            <h3 className="text-xl font-semibold text-white mb-4">🏠 Active Sessions</h3>
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b border-slate-700">
+                    <th className="text-left py-3 px-4 text-slate-400 font-medium text-sm">Employee</th>
+                    <th className="text-left py-3 px-4 text-slate-400 font-medium text-sm">Check-in</th>
+                    <th className="text-left py-3 px-4 text-slate-400 font-medium text-sm">Score</th>
+                    <th className="text-left py-3 px-4 text-slate-400 font-medium text-sm">Signals</th>
+                    <th className="text-left py-3 px-4 text-slate-400 font-medium text-sm">Actions</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {dashboardData?.sessions?.length > 0 ? dashboardData.sessions.map((session) => (
+                    <tr
+                      key={session.attendanceId}
+                      className={`border-b border-slate-700/50 hover:bg-slate-800/50 transition-colors ${session.presenceScore?.riskLevel === 'high' ? 'bg-red-500/5' : ''
+                        }`}
+                    >
+                      <td className="py-4 px-4">
+                        <div>
+                          <p className="text-white font-medium">{session.user?.name || 'Unknown'}</p>
+                          <p className="text-slate-400 text-xs">{session.user?.employeeId || 'No ID'}</p>
+                        </div>
+                      </td>
+                      <td className="py-4 px-4 text-slate-300 text-sm">
+                        {session.startTime ? new Date(session.startTime).toLocaleTimeString() : '-'}
+                      </td>
+                      <td className="py-4 px-4">
+                        {session.presenceScore ? (
+                          <div className="flex flex-col gap-1">
+                            <span className={`px-2 py-0.5 rounded border text-xs font-bold w-fit ${getScoreColor(session.presenceScore.totalScore)}`}>
+                              {session.presenceScore.totalScore}%
+                            </span>
+                            <span className="text-[10px] text-slate-500 uppercase">{session.presenceScore.confidence}</span>
+                          </div>
+                        ) : (
+                          <span className="text-slate-500 text-xs">Syncing...</span>
+                        )}
+                      </td>
+                      <td className="py-4 px-4">
+                        {session.presenceScore?.signals && (
+                          <div className="flex gap-1">
+                            {['geofence', 'locationConsistency', 'deviceActivity', 'motionPattern', 'faceIdentity'].map((sig, i) => {
+                              const score = session.presenceScore.signals[sig];
+                              const colors = ['bg-green-500', 'bg-blue-500', 'bg-purple-500', 'bg-yellow-500', 'bg-teal-500'];
+                              return (
+                                <div key={sig} className="w-1.5 h-6 bg-slate-700 rounded-full overflow-hidden" title={sig}>
+                                  <div
+                                    className={`w-full ${colors[i]} transition-all`}
+                                    style={{ height: `${score}%`, marginTop: `${100 - score}%` }}
+                                  ></div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </td>
+                      <td className="py-4 px-4">
+                        <button className="text-primary-400 hover:text-primary-300 text-xs font-semibold">
+                          Analyze
+                        </button>
+                      </td>
+                    </tr>
+                  )) : (
+                    <tr>
+                      <td colSpan="5" className="py-8 text-center text-slate-500">No active sessions</td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {/* On Leave List */}
+          <div className="card">
+            <h3 className="text-xl font-semibold text-white mb-4">🏖️ On Leave Today</h3>
+            <div className="space-y-4">
+              {dashboardData?.onLeave?.length > 0 ? dashboardData.onLeave.map((leave, idx) => (
+                <div key={idx} className="p-3 rounded-lg bg-slate-800/50 border border-slate-700">
+                  <div className="flex justify-between items-start mb-2">
+                    <div>
+                      <p className="text-white font-medium">{leave.user?.name}</p>
+                      <p className="text-slate-400 text-xs lowercase">{leave.type} leave</p>
+                    </div>
+                    <span className="px-2 py-0.5 rounded bg-blue-500/10 text-blue-400 border border-blue-500/20 text-[10px] font-bold uppercase">
+                      Until {new Date(leave.until).toLocaleDateString()}
+                    </span>
+                  </div>
+                  <p className="text-slate-400 text-xs italic line-clamp-2">"{leave.reason}"</p>
+                </div>
+              )) : (
+                <div className="py-8 text-center text-slate-500 text-sm">
+                  Nobody is on leave today.
+                </div>
+              )}
+            </div>
+
+            {/* Absent List */}
+            <div className="mt-8 pt-6 border-t border-slate-700">
+              <h4 className="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-4">❓ Other Absences ({dashboardData?.stats?.totalAbsent || 0})</h4>
+              <div className="space-y-2">
+                {dashboardData?.absent?.length > 0 ? dashboardData.absent.map((user, idx) => (
+                  <div key={idx} className="flex items-center justify-between p-2 rounded hover:bg-slate-800/30 transition-colors">
+                    <span className="text-slate-300 text-sm font-medium">{user.name}</span>
+                    <span className="text-[10px] text-slate-500">{user.employeeId || 'No ID'}</span>
+                  </div>
+                )) : (
+                  <p className="text-xs text-slate-500 italic text-center py-4">
+                    Zero unauthorized absences today.
+                  </p>
+                )}
+              </div>
+            </div>
           </div>
         </div>
 
