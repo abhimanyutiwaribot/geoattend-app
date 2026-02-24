@@ -26,7 +26,8 @@ export default function LoginScreen({ navigation }) {
       const deviceID = Device.osInternalBuildId || Device.modelId || 'unknown-device';
       await login({ email, password, deviceID });
     } catch (e) {
-      setError(e.message || 'Login failed');
+      const msg = e.response?.data?.message || e.response?.data?.error || e.message || 'Login failed';
+      setError(msg);
     } finally {
       setLoading(false);
     }
