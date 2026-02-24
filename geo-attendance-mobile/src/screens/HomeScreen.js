@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { View, Text, StyleSheet, Alert, TouchableOpacity, Dimensions, Animated, PanResponder } from 'react-native';
+import { View, Text, StyleSheet, Alert, TouchableOpacity, Dimensions, Animated, PanResponder, ActivityIndicator } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { api } from '../api/client';
@@ -344,12 +344,26 @@ export default function HomeScreen() {
           </Text>
         </View>
 
-        <TouchableOpacity
-          style={[styles.iconButton, { backgroundColor: colors.pill, borderColor: colors.border }]}
-          onPress={() => navigation.navigate('Notifications')}
-        >
-          <Ionicons name="notifications" size={24} color={colors.text} />
-        </TouchableOpacity>
+        <View style={styles.headerRightActions}>
+          <TouchableOpacity
+            style={[styles.iconButton, { backgroundColor: colors.pill, borderColor: colors.border }]}
+            onPress={onRefresh}
+            disabled={refreshing}
+          >
+            {refreshing ? (
+              <ActivityIndicator size="small" color={colors.primary} />
+            ) : (
+              <Ionicons name="refresh" size={22} color={colors.text} />
+            )}
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.iconButton, { backgroundColor: colors.pill, borderColor: colors.border }]}
+            onPress={() => navigation.navigate('Notifications')}
+          >
+            <Ionicons name="notifications" size={22} color={colors.text} />
+          </TouchableOpacity>
+        </View>
       </View>
 
       {/* Leave Banner Overlay */}
@@ -450,6 +464,10 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.2,
     shadowRadius: 8,
+  },
+  headerRightActions: {
+    flexDirection: 'row',
+    gap: 10,
   },
   iconButton: {
     width: 44,
