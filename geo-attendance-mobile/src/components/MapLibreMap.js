@@ -1,11 +1,15 @@
-import React, { useRef, useEffect, useState } from 'react';
-import { StyleSheet, View, TouchableOpacity } from 'react-native';
+import React, { useRef, useEffect, useState, useMemo } from 'react';
+import { StyleSheet, View, TouchableOpacity, Dimensions } from 'react-native';
 import MapLibreGL from '@maplibre/maplibre-react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { useTheme } from '../context/ThemeContext';
 
-// Initialize MapLibre inside component to be safe
+const { width } = Dimensions.get('window');
 
-// Custom dark style using free OSM tiles
+// Initialize MapLibre
+MapLibreGL.setConnected(true);
+
+// Custom styles using free OSM tiles
 const DARK_STYLE = {
   version: 8,
   name: 'Dark',
@@ -21,18 +25,47 @@ const DARK_STYLE = {
     {
       id: 'background',
       type: 'background',
-      paint: { 'background-color': '#1e293b' }
+      paint: { 'background-color': '#0f172a' }
     },
     {
       id: 'osm',
       type: 'raster',
       source: 'osm',
       paint: {
-        'raster-opacity': 0.7,
-        'raster-brightness-min': 0.2,
-        'raster-brightness-max': 0.5,
-        'raster-contrast': 0.3,
-        'raster-saturation': -0.4
+        'raster-opacity': 0.4,
+        'raster-brightness-min': 0,
+        'raster-brightness-max': 0.3,
+        'raster-contrast': 0.2,
+        'raster-saturation': -0.6
+      }
+    }
+  ]
+};
+
+const LIGHT_STYLE = {
+  version: 8,
+  name: 'Light',
+  sources: {
+    osm: {
+      type: 'raster',
+      tiles: ['https://tile.openstreetmap.org/{z}/{x}/{y}.png'],
+      tileSize: 256,
+      attribution: '© OpenStreetMap'
+    }
+  },
+  layers: [
+    {
+      id: 'background',
+      type: 'background',
+      paint: { 'background-color': '#f8fafc' }
+    },
+    {
+      id: 'osm',
+      type: 'raster',
+      source: 'osm',
+      paint: {
+        'raster-opacity': 0.8,
+        'raster-saturation': -0.2
       }
     }
   ]
@@ -43,15 +76,16 @@ export function MapLibreMap({
   geofenceStatus,
   officeGeofence,
   onRequestLocation,
-  onMapInteractionChange
+  onMapInteractionChange,
+  fullScreen = false
 }) {
+  const { colors, isDark } = useTheme();
   const mapRef = useRef(null);
   const cameraRef = useRef(null);
   const [isReady, setIsReady] = useState(false);
 
-  useEffect(() => {
-    MapLibreGL.setConnected(true);
-  }, []);
+  // Use the appropriate style based on theme
+  const mapStyle = isDark ? DARK_STYLE : LIGHT_STYLE;
 
   // Calculate geofence center
   const getGeofenceCenter = () => {
@@ -69,15 +103,15 @@ export function MapLibreMap({
     return officeGeofence.center ? [officeGeofence.center.lng, officeGeofence.center.lat] : null;
   };
 
-  const geofenceCenter = getGeofenceCenter();
-  const initialCenter = currentLocation
-    ? [currentLocation.longitude, currentLocation.latitude]
-    : geofenceCenter || [77.2090, 28.6139];
+  const geofenceCenter = useMemo(() => getGeofenceCenter(), [officeGeofence]);
+
+  const initialCenter = useMemo(() => {
+    if (currentLocation) return [currentLocation.longitude, currentLocation.latitude];
+    return geofenceCenter || [77.2090, 28.6139];
+  }, []);
 
   // Center on user location
   const centerOnLocation = async () => {
-    console.log('Center button pressed', { currentLocation });
-
     if (!currentLocation && onRequestLocation) {
       try {
         const location = await onRequestLocation(false, true);
@@ -127,7 +161,7 @@ export function MapLibreMap({
   };
 
   // Get geofence GeoJSON
-  const getGeofenceGeoJSON = () => {
+  const geofenceGeoJSON = useMemo(() => {
     if (!officeGeofence) return null;
 
     if (officeGeofence.type === 'polygon' && officeGeofence.polygon) {
@@ -145,22 +179,24 @@ export function MapLibreMap({
     }
 
     return null;
-  };
+  }, [officeGeofence]);
 
-  const geofenceGeoJSON = getGeofenceGeoJSON();
   const fillColor = geofenceStatus?.isWithin ? 'rgba(34, 197, 94, 0.2)' : 'rgba(239, 68, 68, 0.2)';
   const strokeColor = geofenceStatus?.isWithin ? '#22c55e' : '#ef4444';
 
+  const containerStyle = fullScreen ? styles.fullScreenContainer : getContainerStyle(geofenceStatus, officeGeofence);
+
   return (
-    <View style={getContainerStyle(geofenceStatus, officeGeofence)}>
+    <View style={containerStyle}>
       <View style={styles.mapContainer}>
         <MapLibreGL.MapView
           ref={mapRef}
           style={styles.map}
-          styleJSON={JSON.stringify(DARK_STYLE)}
+          styleJSON={JSON.stringify(mapStyle)}
           logoEnabled={false}
           attributionEnabled={false}
           onDidFinishLoadingMap={() => setIsReady(true)}
+          onPress={() => onMapInteractionChange?.(false)}
         >
           <MapLibreGL.Camera
             ref={cameraRef}
@@ -192,7 +228,7 @@ export function MapLibreMap({
           {/* User Location Marker */}
           {currentLocation && (
             <>
-              {/* Outer pulse ring */}
+              {/* Outer ring */}
               <MapLibreGL.ShapeSource
                 id="location-pulse"
                 shape={{
@@ -206,13 +242,13 @@ export function MapLibreMap({
                 <MapLibreGL.CircleLayer
                   id="location-pulse-circle"
                   style={{
-                    circleRadius: 15,
+                    circleRadius: 10,
                     circleColor: geofenceStatus?.isWithin
                       ? 'rgba(34, 197, 94, 0.15)'
                       : 'rgba(239, 68, 68, 0.15)',
                     circleStrokeColor: geofenceStatus?.isWithin
                       ? 'rgba(9, 24, 15, 0.4)'
-                      : 'rgba(239, 68, 68, 0.4)',
+                      : 'rgba(255, 255, 255, 0.4)',
                     circleStrokeWidth: 2
                   }}
                 />
@@ -232,10 +268,10 @@ export function MapLibreMap({
                 <MapLibreGL.CircleLayer
                   id="location-dot-circle"
                   style={{
-                    circleRadius: 6,
-                    circleColor: geofenceStatus?.isWithin ? '#05170bff' : '#ef4444',
+                    circleRadius: 4,
+                    circleColor: geofenceStatus?.isWithin ? (isDark ? '#05170bff' : '#22c55e') : '#ef4444',
                     circleStrokeColor: '#ffffff',
-                    circleStrokeWidth: 2
+                    circleStrokeWidth: 1.5
                   }}
                 />
               </MapLibreGL.ShapeSource>
@@ -245,11 +281,11 @@ export function MapLibreMap({
 
         {/* Center Button */}
         <TouchableOpacity
-          style={styles.centerButton}
+          style={[styles.centerButton, { backgroundColor: colors.surface, borderColor: colors.border }]}
           onPress={centerOnLocation}
           activeOpacity={0.7}
         >
-          <MaterialCommunityIcons name="crosshairs-gps" size={24} color="#e5e7eb" />
+          <MaterialCommunityIcons name="crosshairs-gps" size={24} color={colors.textSecondary} />
         </TouchableOpacity>
       </View>
     </View>
@@ -257,9 +293,12 @@ export function MapLibreMap({
 }
 
 const styles = StyleSheet.create({
+  fullScreenContainer: {
+    flex: 1,
+    width: '100%',
+  },
   mapContainer: {
     flex: 1,
-    borderRadius: 16,
     overflow: 'hidden',
   },
   map: {
@@ -267,16 +306,14 @@ const styles = StyleSheet.create({
   },
   centerButton: {
     position: 'absolute',
-    bottom: 16,
-    right: 16,
-    backgroundColor: '#1e293b',
+    bottom: 20,
+    right: 20,
     width: 44,
     height: 44,
     borderRadius: 12,
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: '#334155',
     zIndex: 1000,
     elevation: 8,
     shadowColor: '#000',
@@ -292,9 +329,9 @@ const getContainerStyle = (geofenceStatus, officeGeofence) => {
   if (!officeGeofence) {
     glowColor = '#64748b';
   } else if (geofenceStatus?.isWithin) {
-    glowColor = '#08f15eff';
+    glowColor = '#22c55e';
   } else {
-    glowColor = '#f13535ff';
+    glowColor = '#ef4444';
   }
 
   return {
@@ -305,8 +342,8 @@ const getContainerStyle = (geofenceStatus, officeGeofence) => {
     marginBottom: 32,
     shadowColor: glowColor,
     shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 1,
-    shadowRadius: 50,
-    elevation: 30,
+    shadowOpacity: 0.8,
+    shadowRadius: 30,
+    elevation: 20,
   };
 };
