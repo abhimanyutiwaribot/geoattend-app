@@ -9,47 +9,66 @@ export function FaceVerificationModal({ visible, onVerify, onCancel }) {
   const { colors, isDark } = useTheme();
   const [faceData, setFaceData] = useState(null);
   const [isVerifying, setIsVerifying] = useState(false);
-  const [countdown, setCountdown] = useState(0);
+  const [verificationSuccess, setVerificationSuccess] = useState(false);
+  const [countdown, setCountdown] = useState(3);
   const [isSimulationMode, setIsSimulationMode] = useState(false);
   const cameraRef = useRef(null);
 
   useEffect(() => {
-    // Force simulation mode since native detector is deprecated in SDK 54+
+    // Reset state when modal becomes visible
+    if (visible) {
+      setFaceData(null);
+      setIsVerifying(false);
+      setVerificationSuccess(false);
+      setCountdown(3);
+    }
+  }, [visible]);
+
+  useEffect(() => {
     setIsSimulationMode(true);
   }, []);
 
-  // Simulation detection: Trigger "face found" UI after 0.5s (faster)
+  // Simulation detection: Trigger "face found" UI after a more realistic 1.5s
   useEffect(() => {
     if (visible && isSimulationMode && !faceData && !isVerifying) {
       console.log('👁️ Starting face detection simulation...');
       const timer = setTimeout(() => {
         console.log('✅ Face detected (simulated)');
         setFaceData({ bounds: { origin: { x: 0, y: 0 }, size: { width: 100, height: 100 } } });
-      }, 500);
+      }, 1500);
       return () => clearTimeout(timer);
     }
   }, [visible, isSimulationMode, faceData, isVerifying]);
 
+  // Countdown logic once face is detected
   useEffect(() => {
-    if (visible && faceData && countdown === 0 && !isVerifying) {
-      startAutoVerify();
+    if (visible && faceData && countdown > 0 && !isVerifying) {
+      const timer = setTimeout(() => {
+        setCountdown(prev => prev - 1);
+      }, 1000);
+      return () => clearTimeout(timer);
+    } else if (visible && faceData && countdown === 0 && !isVerifying) {
+      handleVerify();
     }
   }, [visible, faceData, countdown, isVerifying]);
-
-  const startAutoVerify = () => {
-    handleVerify();
-  };
 
   const handleVerify = async () => {
     setIsVerifying(true);
     try {
       const photoBase64 = await capturePhotoAsBase64(cameraRef);
       validateImageSize(photoBase64);
+
+      // Call parent onVerify
       await onVerify(photoBase64);
+
+      // Set local success state to show "Verified" message before modal closes
+      setVerificationSuccess(true);
+
+      // Modal typically closes via parent state update triggered by onVerify
+      // but if the parent takes time, we show success here.
     } catch (e) {
       console.error('❌ Verification error:', e);
-    } finally {
-      setIsVerifying(false);
+      setIsVerifying(false); // Only reset if failed
     }
   };
 
@@ -64,36 +83,51 @@ export function FaceVerificationModal({ visible, onVerify, onCancel }) {
           <View style={{ width: 28 }} />
         </View>
 
-        <View style={[styles.cameraContainer, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+        <View style={[styles.cameraContainer, { backgroundColor: colors.surface, borderColor: verificationSuccess ? colors.primary : colors.border }]}>
           <CameraView
             ref={cameraRef}
             style={styles.camera}
             facing="front"
           >
             <View style={[styles.overlay, { backgroundColor: isDark ? 'rgba(0,0,0,0.3)' : 'rgba(255,255,255,0.1)' }]}>
-              <View style={[
-                styles.faceFrame,
-                faceData ? { borderColor: colors.primary, backgroundColor: isDark ? 'rgba(34, 197, 94, 0.1)' : 'rgba(34, 197, 94, 0.2)' } : { borderColor: colors.textMuted }
-              ]} />
+              {verificationSuccess ? (
+                <View style={[styles.successOverlay, { backgroundColor: 'rgba(34, 197, 94, 0.2)' }]}>
+                  <Ionicons name="checkmark-circle" size={100} color={colors.primary} />
+                </View>
+              ) : (
+                <View style={[
+                  styles.faceFrame,
+                  faceData ? { borderColor: colors.primary, backgroundColor: isDark ? 'rgba(34, 197, 94, 0.1)' : 'rgba(34, 197, 94, 0.2)' } : { borderColor: colors.textMuted }
+                ]}>
+                  {faceData && countdown > 0 && (
+                    <Text style={[styles.countdownText, { color: colors.primary }]}>{countdown}</Text>
+                  )}
+                </View>
+              )}
             </View>
           </CameraView>
         </View>
 
         <View style={styles.footer}>
-          {isVerifying ? (
+          {verificationSuccess ? (
+            <>
+              <Text style={[styles.instruction, { color: colors.primary }]}>✓ Verification Successful</Text>
+              <Text style={[styles.subInstruction, { color: colors.textSecondary }]}>Signing you in...</Text>
+            </>
+          ) : isVerifying ? (
             <>
               <ActivityIndicator size="large" color={colors.primary} />
-              <Text style={[styles.verifyingText, { color: colors.primary }]}>Verifying identity...</Text>
+              <Text style={[styles.verifyingText, { color: colors.primary }]}>Analyzing features...</Text>
             </>
           ) : (
             <>
               <Text style={[styles.instruction, { color: colors.text }]}>
                 {faceData
-                  ? "✓ Identity detected. Verifying..."
-                  : "Position your face in the frame to confirm identity."}
+                  ? `Hold still for ${countdown}s...`
+                  : "Position your face in the frame"}
               </Text>
               <Text style={[styles.subInstruction, { color: colors.textSecondary }]}>
-                This is a mandatory security check for attendance.
+                {faceData ? "Identity located. Verifying security..." : "Keep your device steady and look into the camera."}
               </Text>
             </>
           )}
@@ -127,22 +161,34 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
+  successOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   faceFrame: {
     width: 280,
     height: 280,
     borderRadius: 140,
     borderWidth: 4,
     borderStyle: 'dashed',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  countdownText: {
+    fontSize: 80,
+    fontWeight: '800',
   },
   footer: {
-    padding: 40,
+    paddingVertical: 30,
+    paddingHorizontal: 40,
     alignItems: 'center',
     minHeight: 180,
   },
   instruction: {
     textAlign: 'center',
-    fontSize: 18,
-    fontWeight: '600',
+    fontSize: 20,
+    fontWeight: 'bold',
     marginBottom: 8,
   },
   verifyingText: {
@@ -154,5 +200,6 @@ const styles = StyleSheet.create({
   subInstruction: {
     textAlign: 'center',
     fontSize: 14,
+    opacity: 0.8,
   }
 });
