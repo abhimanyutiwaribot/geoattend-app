@@ -18,8 +18,8 @@ import { useTheme } from '../context/ThemeContext';
 // Components
 import { SessionInfoCard } from '../components/SessionInfoCard';
 import { AttendanceButton } from '../components/AttendanceButton';
-import { AttendanceMap } from '../components/AttendanceMap';
-// import { MapLibreMap } from '../components/MapLibreMap'; // MapLibre (Free)
+// import { AttendanceMap } from '../components/AttendanceMap'; // Google Maps (Requires Keys)
+import { MapLibreMap } from '../components/MapLibreMap'; // MapLibre (Free)
 import { FaceVerificationModal } from '../components/FaceVerificationModal';
 
 
@@ -316,7 +316,7 @@ export default function HomeScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <AttendanceMap
+      <MapLibreMap
         currentLocation={currentLocation}
         geofenceStatus={geofenceStatus}
         officeGeofence={officeGeofence}
