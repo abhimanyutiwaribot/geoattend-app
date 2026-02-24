@@ -32,16 +32,32 @@ export function AuthProvider({ children }) {
   }, []);
 
   const login = async ({ email, password, deviceID }) => {
-    const res = await api.post('/user/auth/login', { email, password, deviceID });
-    const { token: jwt, user: userData } = res.data.data;
+    try {
+      const res = await api.post('/user/auth/login', { email, password, deviceID });
 
-    setUser(userData);
-    setToken(jwt);
+      // Safety check for response structure
+      if (!res.data || !res.data.data) {
+        console.error('Invalid API response structure:', res.data);
+        throw new Error('Server returned an unexpected response format');
+      }
 
-    await setAuthToken(jwt);
-    await AsyncStorage.setItem('authUser', JSON.stringify(userData));
+      const { token: jwt, user: userData } = res.data.data;
 
-    return userData;
+      if (!jwt) {
+        throw new Error('No authentication token received from server');
+      }
+
+      setUser(userData);
+      setToken(jwt);
+
+      await setAuthToken(jwt);
+      await AsyncStorage.setItem('authUser', JSON.stringify(userData));
+
+      return userData;
+    } catch (error) {
+      console.error('Login error detail:', error);
+      throw error;
+    }
   };
 
   const logout = async () => {
