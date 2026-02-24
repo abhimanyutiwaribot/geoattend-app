@@ -24,8 +24,9 @@ export default function Dashboard() {
   if (loading) {
     return (
       <Layout>
-        <div className="flex items-center justify-center h-64">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
+        <div className="flex flex-col items-center justify-center py-24 space-y-4">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-500"></div>
+          <p className="text-slate-500 font-medium animate-pulse">Loading Dashboard...</p>
         </div>
       </Layout>
     );
@@ -33,134 +34,123 @@ export default function Dashboard() {
 
   return (
     <Layout>
-      <div className="space-y-6">
-        <h2 className="text-3xl font-bold text-white">Dashboard</h2>
-
-        {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          <StatsCard
-            title="Total Users"
-            value={stats?.overview?.totalUsers || 0}
-            icon={<UsersIcon />}
-            color="bg-blue-600"
-          />
-          <StatsCard
-            title="Active Sessions"
-            value={stats?.overview?.activeSessions || 0}
-            icon={<ActiveIcon />}
-            color="bg-green-600"
-          />
-          <StatsCard
-            title="Today's Attendance"
-            value={stats?.overview?.todayAttendances || 0}
-            icon={<CalendarIcon />}
-            color="bg-purple-600"
-          />
-          <StatsCard
-            title="Suspicious Activities"
-            value={stats?.overview?.suspiciousActivities || 0}
-            icon={<AlertIcon />}
-            color="bg-red-600"
-          />
-        </div>
-
-        {/* Weekly Trend */}
-        <div className="card">
-          <h3 className="text-xl font-semibold text-white mb-4">Weekly Attendance Trend</h3>
-          {stats?.weeklyTrend && stats.weeklyTrend.length > 0 ? (
-            <div className="space-y-3">
-              {stats.weeklyTrend.map((day) => (
-                <div key={day._id} className="flex items-center">
-                  <span className="text-slate-400 w-32">{day._id}</span>
-                  <div className="flex-1 bg-slate-700 rounded-full h-8 overflow-hidden">
-                    <div
-                      className="bg-primary-600 h-full flex items-center justify-end px-3"
-                      style={{ width: `${Math.min((day.count / 50) * 100, 100)}%` }}
-                    >
-                      <span className="text-white text-sm font-medium">{day.count}</span>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <p className="text-slate-400">No data available</p>
-          )}
-        </div>
-
-        {/* Recent Challenges */}
-        <div className="card">
-          <h3 className="text-xl font-semibold text-white mb-4">Recent Activity</h3>
-          <div className="space-y-2">
-            <ActivityItem
-              title="Recent Challenges"
-              value={stats?.overview?.recentChallenges || 0}
-              description="Cognitive challenges in last 24 hours"
-            />
+      <div className="space-y-10 max-w-[1200px] mx-auto">
+        {/* Header */}
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-3xl font-black text-white tracking-tight">System Summary</h2>
+            <p className="text-slate-400 mt-1 font-medium">Daily attendance and staff overview</p>
           </div>
+          <div className="flex items-center gap-2 px-3 py-1 bg-emerald-500/10 rounded-full border border-emerald-500/20">
+            <div className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse"></div>
+            <span className="text-[10px] font-black text-emerald-400 uppercase tracking-widest">System Live</span>
+          </div>
+        </div>
+
+        {/* Stats Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <SimpleStatCard
+            title="Total Staff"
+            value={stats?.overview?.totalUsers || 0}
+            icon="👥"
+            color="emerald"
+          />
+          <SimpleStatCard
+            title="Checked In"
+            value={stats?.overview?.activeSessions || 0}
+            icon="✅"
+            color="sky"
+          />
+          <SimpleStatCard
+            title="On Leave"
+            value={stats?.stats?.totalOnLeave || 0}
+            icon="🏖️"
+            color="indigo"
+          />
+          <SimpleStatCard
+            title="Flagged"
+            value={stats?.overview?.suspiciousActivities || 0}
+            icon="🚨"
+            color="rose"
+          />
+        </div>
+
+        {/* Content Grid */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Weekly Attendance */}
+          <div className="lg:col-span-2 bg-slate-900 border border-slate-800 rounded-3xl p-6">
+            <h3 className="text-sm font-black text-white uppercase tracking-widest mb-6">Weekly Attendance</h3>
+            {stats?.weeklyTrend && stats.weeklyTrend.length > 0 ? (
+              <div className="space-y-4">
+                {stats.weeklyTrend.map((day) => (
+                  <div key={day._id} className="flex items-center gap-4">
+                    <span className="text-xs font-bold text-slate-500 w-24 uppercase tracking-tighter">{day._id}</span>
+                    <div className="flex-1 h-3 bg-slate-950 rounded-full overflow-hidden">
+                      <div
+                        className="h-full bg-emerald-500 rounded-full transition-all duration-1000 ease-out"
+                        style={{ width: `${Math.min((day.count / (stats?.overview?.totalUsers || 10)) * 100, 100)}%` }}
+                      ></div>
+                    </div>
+                    <span className="text-xs font-mono font-bold text-slate-300 w-8">{day.count}</span>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="py-12 text-center text-xs font-bold text-slate-600 uppercase tracking-widest italic">No Trend Data Available</p>
+            )}
+          </div>
+
+          {/* Productivity / Health Stats */}
+          {/* <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 space-y-6">
+            <h3 className="text-sm font-black text-white uppercase tracking-widest">Attendance Health</h3>
+
+            <div className="space-y-4">
+              <HealthItem label="Activity Score" value="94.2%" color="text-emerald-400" />
+              <HealthItem label="Avg Presence" value="7.8h" color="text-sky-400" />
+              <HealthItem label="Verification Rate" value="99.1%" color="text-indigo-400" />
+            </div>
+
+            <div className="pt-6 border-t border-slate-800">
+              <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-3">Quick Actions</p>
+              <button className="w-full py-3 bg-slate-800 hover:bg-slate-750 text-white rounded-2xl text-xs font-bold transition-all active:scale-95">
+                Download Daily Report
+              </button>
+            </div>
+          </div> */}
+        </div>
+
+        <div className="pt-8 text-center opacity-20">
+          <p className="text-[10px] font-black text-slate-500 uppercase tracking-[0.3em]">System Overview Dashboard</p>
         </div>
       </div>
     </Layout>
   );
 }
 
-function StatsCard({ title, value, icon, color }) {
+function SimpleStatCard({ title, value, icon, color }) {
+  const colors = {
+    emerald: 'border-emerald-500/20 bg-emerald-500/5 text-emerald-400',
+    sky: 'border-sky-500/20 bg-sky-500/5 text-sky-400',
+    indigo: 'border-indigo-500/20 bg-indigo-500/5 text-indigo-400',
+    rose: 'border-rose-500/20 bg-rose-500/5 text-rose-400',
+  };
+
   return (
-    <div className="card">
-      <div className="flex items-center justify-between">
-        <div>
-          <p className="text-slate-400 text-sm">{title}</p>
-          <p className="text-3xl font-bold text-white mt-2">{value}</p>
-        </div>
-        <div className={`${color} p-3 rounded-lg`}>
-          {icon}
-        </div>
+    <div className={`p-6 rounded-[2.5rem] border ${colors[color]} transition-all hover:-translate-y-1`}>
+      <div className="flex items-center justify-between mb-2">
+        <span className="text-[10px] font-black uppercase tracking-widest opacity-70">{title}</span>
+        <span className="text-lg">{icon}</span>
       </div>
+      <p className="text-3xl font-black text-white tracking-tighter">{value}</p>
     </div>
   );
 }
 
-function ActivityItem({ title, value, description }) {
+function HealthItem({ label, value, color }) {
   return (
-    <div className="flex items-center justify-between py-3 border-b border-slate-700 last:border-0">
-      <div>
-        <p className="text-white font-medium">{title}</p>
-        <p className="text-slate-400 text-sm">{description}</p>
-      </div>
-      <span className="text-2xl font-bold text-primary-600">{value}</span>
+    <div className="flex items-center justify-between">
+      <span className="text-xs font-bold text-slate-500 uppercase tracking-tighter">{label}</span>
+      <span className={`text-sm font-black ${color} tracking-tight`}>{value}</span>
     </div>
-  );
-}
-
-// Icons
-function UsersIcon() {
-  return (
-    <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
-    </svg>
-  );
-}
-
-function ActiveIcon() {
-  return (
-    <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-    </svg>
-  );
-}
-
-function CalendarIcon() {
-  return (
-    <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-    </svg>
-  );
-}
-
-function AlertIcon() {
-  return (
-    <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-    </svg>
   );
 }
