@@ -211,7 +211,7 @@ const styles = StyleSheet.create({
   errorTitle: { fontSize: 18, fontWeight: 'bold' },
   bottomTabBar: {
     position: 'absolute',
-    bottom: Platform.OS === 'ios' ? 40 : 30,
+    bottom: Platform.OS === 'ios' ? 60 : 50,
     left: '20%',
     right: '20%',
     height: 64,
