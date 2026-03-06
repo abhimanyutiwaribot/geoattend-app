@@ -21,24 +21,9 @@ attendanceRouter.post("/start", authMiddleware, async function (req, res) {
 
         // Support both image (real) and embedding (simulation)
         if (identityImage) {
-            try {
-                // REAL FACE RECOGNITION: Generate embedding from image
-                const RealFaceRecognitionService = require('../services/realFaceRecognitionService');
-                console.log('🎯 [Attendance] Processing real face image for verification');
-                faceEmbedding = await RealFaceRecognitionService.generateEmbedding(identityImage);
-            } catch (error) {
-                // Fall back to simulation if models aren't loaded
-                if (error.message && error.message.includes('models not loaded')) {
-                    console.log('⚠️  [Attendance] Models not available, using simulation mode');
-                    // Generate simulated embedding from image hash
-                    const crypto = require('crypto');
-                    const imageHash = crypto.createHash('md5').update(identityImage.substring(0, 1000)).digest('hex');
-                    const seed = parseInt(imageHash.substring(0, 8), 16);
-                    faceEmbedding = Array.from({ length: 128 }, (_, i) => Math.sin(seed + i * 0.1) * 2 - 1);
-                } else {
-                    throw error;
-                }
-            }
+            const RealFaceRecognitionService = require('../services/realFaceRecognitionService');
+            console.log('[Attendance] Processing face image for check-in verification');
+            faceEmbedding = await RealFaceRecognitionService.generateEmbedding(identityImage);
         } else if (identityEmbedding) {
             // SIMULATION MODE: Use provided embedding
             console.log('🎭 [Attendance] Using simulated embedding for verification');
@@ -185,11 +170,17 @@ attendanceRouter.post("/validate", authMiddleware, async function (req, res) {
 
         const motionAnalysis = MotionAnalysisService.analyzeMotionPattern(gyro, accel);
 
+        // Frontend (expo-sensors) sends { x, y, z } objects.
+        // MotionModel schema expects [Number] arrays → convert defensively.
+        const toArray = (d) => Array.isArray(d) ? d : [d?.x ?? 0, d?.y ?? 0, d?.z ?? 0];
+        // console.log(toArray(gyro))
+        // console.log(toArray(accel))
+
         const motionLog = new MotionModel({
             userId,
             attendanceId,
-            gyro,
-            accel,
+            gyro: toArray(gyro),
+            accel: toArray(accel),
             motionType: motionAnalysis.motionType,
             confidence: motionAnalysis.confidence
         });
@@ -213,13 +204,6 @@ attendanceRouter.post("/validate", authMiddleware, async function (req, res) {
         attendance.validationScore = Math.min(100, avgConfidence);
         await attendance.save();
 
-        // Trigger full presence engine score calculation for real-time dashboard updates
-        try {
-            const PresenceEngineService = require("../services/presenceEngineService");
-            await PresenceEngineService.calculatePresenceScore(userId, attendanceId);
-        } catch (pesError) {
-            console.error("⚠️ Background presence calculation failed:", pesError.message);
-        }
 
         res.json({
             success: true,

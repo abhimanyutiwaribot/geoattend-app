@@ -16,29 +16,13 @@ biometricRouter.post('/enroll', authMiddleware, async (req, res) => {
 
     let faceEmbedding;
 
-    // Support both image (real) and embedding (simulation) for backward compatibility
     if (image) {
-      try {
-        // REAL FACE RECOGNITION: Generate embedding from image
-        console.log('🎯 [Biometric] Processing real face image for enrollment');
-        faceEmbedding = await RealFaceRecognitionService.generateEmbedding(image);
-        console.log('✅ [Biometric] Face embedding generated from image');
-      } catch (error) {
-        // Fall back to simulation if models aren't loaded
-        if (error.message.includes('models not loaded')) {
-          console.log('⚠️  [Biometric] Models not available, using simulation mode');
-          // Generate simulated embedding from image hash
-          const crypto = require('crypto');
-          const imageHash = crypto.createHash('md5').update(image.substring(0, 1000)).digest('hex');
-          const seed = parseInt(imageHash.substring(0, 8), 16);
-          faceEmbedding = Array.from({ length: 128 }, (_, i) => Math.sin(seed + i * 0.1) * 2 - 1);
-        } else {
-          throw error;
-        }
-      }
+      // REAL FACE RECOGNITION: Generate 128-dim embedding from photo
+      console.log('[Biometric] Processing face image for enrollment');
+      faceEmbedding = await RealFaceRecognitionService.generateEmbedding(image);
+      console.log('[Biometric] Embedding generated successfully');
     } else if (embedding && Array.isArray(embedding)) {
-      // SIMULATION MODE: Use provided embedding
-      console.log('🎭 [Biometric] Using simulated embedding for enrollment');
+      // Allow direct embedding (admin/testing only)
       faceEmbedding = embedding;
     } else {
       return res.status(400).json({
@@ -74,29 +58,13 @@ biometricRouter.post('/verify', authMiddleware, async (req, res) => {
 
     let faceEmbedding;
 
-    // Support both image (real) and embedding (simulation)
     if (image) {
-      try {
-        // REAL FACE RECOGNITION: Generate embedding from image
-        console.log('🎯 [Biometric] Processing real face image for verification');
-        faceEmbedding = await RealFaceRecognitionService.generateEmbedding(image);
-        console.log('✅ [Biometric] Face embedding generated from image');
-      } catch (error) {
-        // Fall back to simulation if models aren't loaded
-        if (error.message.includes('models not loaded')) {
-          console.log('⚠️  [Biometric] Models not available, using simulation mode');
-          // Generate simulated embedding from image hash (deterministic)
-          const crypto = require('crypto');
-          const imageHash = crypto.createHash('md5').update(image.substring(0, 1000)).digest('hex');
-          const seed = parseInt(imageHash.substring(0, 8), 16);
-          faceEmbedding = Array.from({ length: 128 }, (_, i) => Math.sin(seed + i * 0.1) * 2 - 1);
-        } else {
-          throw error;
-        }
-      }
+      // REAL FACE RECOGNITION: Generate 128-dim embedding from photo
+      console.log('[Biometric] Processing face image for verification');
+      faceEmbedding = await RealFaceRecognitionService.generateEmbedding(image);
+      console.log('[Biometric] Embedding generated successfully');
     } else if (embedding && Array.isArray(embedding)) {
-      // SIMULATION MODE: Use provided embedding
-      console.log('🎭 [Biometric] Using simulated embedding for verification');
+      // Allow direct embedding (admin/testing only)
       faceEmbedding = embedding;
     } else {
       return res.status(400).json({

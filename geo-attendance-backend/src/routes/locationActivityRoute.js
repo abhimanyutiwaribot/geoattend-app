@@ -36,13 +36,6 @@ locationActivityRouter.post('/location/log', authMiddleware, async (req, res) =>
       metadata || {}
     );
 
-    // Trigger full presence engine score calculation for real-time dashboard updates
-    try {
-      const PresenceEngineService = require("../services/presenceEngineService");
-      await PresenceEngineService.calculatePresenceScore(userId, activeSession._id);
-    } catch (pesError) {
-      console.error("⚠️ Background presence calculation failed:", pesError.message);
-    }
 
     res.json({
       success: true,
