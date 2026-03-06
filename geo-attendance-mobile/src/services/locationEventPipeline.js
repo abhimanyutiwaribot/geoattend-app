@@ -94,7 +94,7 @@ export class LocationValidator {
  * Uses moving average of last N points
  */
 export class LocationSmoother {
-  constructor(bufferSize = 3) {
+  constructor(bufferSize = 2) {
     this.buffer = [];
     this.bufferSize = bufferSize;
   }
@@ -106,14 +106,13 @@ export class LocationSmoother {
     const { coords, timestamp } = locationEvent;
 
     // Add to buffer
-    this.buffer.push(coords);
+    this.buffer.push({ ...coords }); // Deep copy
     if (this.buffer.length > this.bufferSize) {
       this.buffer.shift();
     }
 
     // Need at least 2 points for smoothing
     if (this.buffer.length < 2) {
-      console.log('📊 [Smoother] Buffering... (', this.buffer.length, '/', this.bufferSize, ')');
       return locationEvent;
     }
 
@@ -128,7 +127,7 @@ export class LocationSmoother {
       mocked: coords.mocked
     };
 
-    console.log('📊 [Smoother] Smoothed location (avg of', this.buffer.length, 'points)');
+    console.log(`📊 [Smoother] Raw: [${coords.latitude.toFixed(6)}, ${coords.longitude.toFixed(6)}] | Smoothed: [${smoothedCoords.latitude.toFixed(6)}, ${smoothedCoords.longitude.toFixed(6)}]`);
 
     return {
       coords: smoothedCoords,
@@ -167,40 +166,50 @@ export class GeofenceEngine {
     const { coords } = locationEvent;
 
     if (!this.geofence) {
-      console.log('⚠️ [Geofence] No geofence configured');
-      return {
-        isWithin: null,
-        distance: null,
-        geofenceName: null
-      };
+      console.log('⚠️ [Geofence] No geofence configured in engine');
+      return { isWithin: null, distance: null, geofenceName: null };
     }
 
-    let distance;
-    let isWithin;
+    let distance = 0;
+    let isWithin = false;
 
-    if (this.geofence.type === 'circle') {
-      // Circle geofence
-      distance = calculateDistance(
-        coords.latitude,
-        coords.longitude,
-        this.geofence.center.lat,
-        this.geofence.center.lng
-      );
-      isWithin = distance <= this.geofence.radius;
-    } else if (this.geofence.type === 'polygon') {
-      // Polygon geofence (simplified - using center point for now)
-      const center = this._getPolygonCenter(this.geofence.polygon);
-      distance = calculateDistance(
-        coords.latitude,
-        coords.longitude,
-        center.lat,
-        center.lng
-      );
-      isWithin = this._isPointInPolygon(coords, this.geofence.polygon);
+    try {
+      if (this.geofence.type === 'circle') {
+        if (!this.geofence.center || this.geofence.center.lat === undefined) {
+          console.log('❌ [Geofence] Circle config error: Missing center');
+          return { isWithin: false, distance: null, geofenceName: this.geofence.name };
+        }
+
+        distance = calculateDistance(
+          coords.latitude,
+          coords.longitude,
+          this.geofence.center.lat,
+          this.geofence.center.lng
+        );
+        isWithin = distance <= this.geofence.radius;
+        console.log(`� [Geofence Check] Type: CIRCLE | Result: ${isWithin ? 'INSIDE' : 'OUTSIDE'} | Dist: ${distance.toFixed(1)}m | Radius: ${this.geofence.radius}m`);
+      } else if (this.geofence.type === 'polygon') {
+        if (!this.geofence.polygon || this.geofence.polygon.length === 0) {
+          console.log('❌ [Geofence] Polygon config error: Empty polygon array');
+          return { isWithin: false, distance: null, geofenceName: this.geofence.name };
+        }
+
+        const center = this._getPolygonCenter(this.geofence.polygon);
+        distance = calculateDistance(
+          coords.latitude,
+          coords.longitude,
+          center.lat,
+          center.lng
+        );
+        isWithin = this._isPointInPolygon(coords, this.geofence.polygon);
+        // _isPointInPolygon already logs its result, but we'll add one here for consistency
+        console.log(`� [Geofence Check] Type: POLYGON | Result: ${isWithin ? 'INSIDE' : 'OUTSIDE'} | Dist to Center: ${distance.toFixed(1)}m`);
+      } else {
+        console.log(`❓ [Geofence] Unknown geofence type: ${this.geofence.type}`);
+      }
+    } catch (err) {
+      console.error('❌ [Geofence] Engine error during check:', err.message);
     }
-
-    const status = isWithin ? 'INSIDE' : 'OUTSIDE';
-    console.log(`🏢 [Geofence] Status: ${status} (${distance.toFixed(1)}m)`);
 
     return {
       isWithin,
@@ -219,15 +228,23 @@ export class GeofenceEngine {
   }
 
   _isPointInPolygon(point, polygon) {
-    // Ray casting algorithm
+    // Point: { latitude: Y, longitude: X }
+    // Polygon: [{ lat: Y, lng: X }]
+    const x = point.longitude;
+    const y = point.latitude;
+
     let inside = false;
     for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
       const xi = polygon[i].lng, yi = polygon[i].lat;
       const xj = polygon[j].lng, yj = polygon[j].lat;
-      const intersect = ((yi > point.latitude) !== (yj > point.latitude))
-        && (point.longitude < (xj - xi) * (point.latitude - yi) / (yj - yi) + xi);
+
+      const intersect = ((yi > y) !== (yj > y))
+        && (x < (xj - xi) * (y - yi) / (yj - yi) + xi);
+
       if (intersect) inside = !inside;
     }
+
+    console.log(`🎯 [Geofence Check] Point: [${x.toFixed(6)}, ${y.toFixed(6)}] | Polygon Corners: ${polygon.length} | Result: ${inside ? 'INSIDE' : 'OUTSIDE'}`);
     return inside;
   }
 }
@@ -244,7 +261,7 @@ export class GeofenceEngine {
 export class GeofenceStateMachine {
   constructor(config = {}) {
     this.currentState = null;
-    this.debounceTime = config.debounceTime || 30000; // 30 seconds
+    this.debounceTime = 0; // Temporarily 0 for real-time debugging (revert later)
     this.pendingTransition = null;
     this.transitionTimer = null;
     this.listeners = [];
@@ -255,6 +272,7 @@ export class GeofenceStateMachine {
    */
   process(geofenceStatus) {
     const { isWithin } = geofenceStatus;
+    console.log("bool:", isWithin)
 
     if (isWithin === null) {
       return; // No geofence configured
@@ -358,10 +376,22 @@ export class LocationEventPipeline {
   async process(rawLocationEvent) {
     console.log('🔵 [Pipeline] New location event received');
 
+    // Layer 0: Check geofence BEFORE validation (ensures log visibility)
+    const initialGeofence = this.geofenceEngine.check(rawLocationEvent);
+
     // Layer 1: Validation
     const validatedEvent = this.validator.validate(rawLocationEvent);
     if (!validatedEvent) {
-      console.log('🔴 [Pipeline] Event rejected by validator');
+      console.log(`🔴 [Pipeline] Rejected (Accuracy: ${rawLocationEvent.coords.accuracy.toFixed(1)}m > ${this.validator.maxAccuracy}m)`);
+
+      // Still emit event so UI can show the status, but marked as invalid
+      this._emitEvent({
+        location: rawLocationEvent,
+        geofence: initialGeofence,
+        isValid: false,
+        state: this.stateMachine.getState(),
+        timestamp: rawLocationEvent.timestamp
+      });
       return null;
     }
 
@@ -370,6 +400,12 @@ export class LocationEventPipeline {
 
     // Layer 3: Geofence Check
     const geofenceStatus = this.geofenceEngine.check(smoothedEvent);
+
+    // DEBUG: Check raw status to see if smoothing is causing lag
+    const rawGeofenceStatus = this.geofenceEngine.check(validatedEvent);
+    if (rawGeofenceStatus.isWithin !== geofenceStatus.isWithin) {
+      console.log(`⚠️ [Pipeline] Lag Detected! Raw: ${rawGeofenceStatus.isWithin ? 'INSIDE' : 'OUTSIDE'} | Smoothed: ${geofenceStatus.isWithin ? 'INSIDE' : 'OUTSIDE'}`);
+    }
 
     // Layer 4: State Machine
     this.stateMachine.process(geofenceStatus);
