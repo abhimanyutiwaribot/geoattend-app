@@ -331,9 +331,9 @@ class PresenceEngineService {
     } catch (error) {
       console.error('Face identity signal error:', error);
       return {
-        score: 100,
+        score: 50, // Neutral — don't grant perfect identity score on a DB read error
         weight: this.weights.faceIdentity,
-        data: { matchConfidence: 0, isLivenessVerified: false, lastVerificationType: 'none' }
+        data: { matchConfidence: 0, isLivenessVerified: false, lastVerificationType: 'error' }
       };
     }
   }
