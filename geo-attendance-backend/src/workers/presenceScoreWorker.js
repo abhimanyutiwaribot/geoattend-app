@@ -19,7 +19,7 @@ class PresenceScoreWorker {
     console.log('🤖 Starting Presence Score Worker...');
 
     // Run every 15 minutes: */15 * * * *
-    this.cronJob = cron.schedule('*/1 * * * *', async () => {
+    this.cronJob = cron.schedule('*/15 * * * *', async () => {
       await this.calculateScoresForActiveSessions();
     });
 
@@ -80,7 +80,12 @@ class PresenceScoreWorker {
             session._id
           );
 
-          console.log(`✅ ${session.userId}: Score ${result.summary.totalScore}, Confidence: ${result.summary.confidence}`);
+          // Guard: user might be on approved leave — no summary in that case
+          if (result.status === 'on_leave') {
+            console.log(`⏭️  ${session.userId}: Skipped (on approved leave)`);
+          } else {
+            console.log(`✅ ${session.userId}: Score ${result.summary?.totalScore}, Confidence: ${result.summary?.confidence}`);
+          }
           successCount++;
 
         } catch (error) {
