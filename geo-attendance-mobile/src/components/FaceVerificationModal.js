@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Modal, ActivityIndicator } from 'react-native';
 import { Camera, CameraView } from 'expo-camera';
+import * as FaceDetector from 'expo-face-detector';
 import { Ionicons } from '@expo/vector-icons';
 import { capturePhotoAsBase64, validateImageSize } from '../utils/cameraUtils';
 import { useTheme } from '../context/ThemeContext';
@@ -11,44 +12,41 @@ export function FaceVerificationModal({ visible, onVerify, onCancel }) {
   const [isVerifying, setIsVerifying] = useState(false);
   const [verificationSuccess, setVerificationSuccess] = useState(false);
   const [countdown, setCountdown] = useState(3);
-  const [isSimulationMode, setIsSimulationMode] = useState(false);
+  const [showManualCapture, setShowManualCapture] = useState(false);
   const cameraRef = useRef(null);
 
   useEffect(() => {
-    // Reset state when modal becomes visible
     if (visible) {
       setFaceData(null);
       setIsVerifying(false);
       setVerificationSuccess(false);
       setCountdown(3);
+      setShowManualCapture(false);
+      // Show manual capture button after 5s if face detector hasn't fired
+      const fallback = setTimeout(() => setShowManualCapture(true), 5000);
+      return () => clearTimeout(fallback);
     }
   }, [visible]);
 
-  useEffect(() => {
-    setIsSimulationMode(true);
-  }, []);
-
-  // Simulation detection: Trigger "face found" UI after a more realistic 1.5s
-  useEffect(() => {
-    if (visible && isSimulationMode && !faceData && !isVerifying) {
-      console.log('👁️ Starting face detection simulation...');
-      const timer = setTimeout(() => {
-        console.log('✅ Face detected (simulated)');
-        setFaceData({ bounds: { origin: { x: 0, y: 0 }, size: { width: 100, height: 100 } } });
-      }, 1500);
-      return () => clearTimeout(timer);
+  // Real face detection handler — called by CameraView when a face enters/leaves frame
+  const handleFacesDetected = ({ faces }) => {
+    if (!isVerifying && !verificationSuccess) {
+      setFaceData(faces.length > 0 ? faces[0] : null);
     }
-  }, [visible, isSimulationMode, faceData, isVerifying]);
+  };
 
-  // Countdown logic once face is detected
+  // Countdown: starts when face is detected, resets if face is lost before 0
   useEffect(() => {
-    if (visible && faceData && countdown > 0 && !isVerifying) {
-      const timer = setTimeout(() => {
-        setCountdown(prev => prev - 1);
-      }, 1000);
+    if (!visible || isVerifying) return;
+
+    if (faceData && countdown > 0) {
+      const timer = setTimeout(() => setCountdown(prev => prev - 1), 1000);
       return () => clearTimeout(timer);
-    } else if (visible && faceData && countdown === 0 && !isVerifying) {
+    } else if (faceData && countdown === 0) {
       handleVerify();
+    } else if (!faceData) {
+      // Face lost — reset countdown
+      setCountdown(3);
     }
   }, [visible, faceData, countdown, isVerifying]);
 
@@ -88,6 +86,14 @@ export function FaceVerificationModal({ visible, onVerify, onCancel }) {
             ref={cameraRef}
             style={styles.camera}
             facing="front"
+            onFacesDetected={handleFacesDetected}
+            faceDetectorSettings={{
+              mode: FaceDetector.FaceDetectorMode.fast,
+              detectLandmarks: FaceDetector.FaceDetectorLandmarks.none,
+              runClassifications: FaceDetector.FaceDetectorClassifications.none,
+              minDetectionInterval: 200,
+              tracking: true,
+            }}
           >
             <View style={[styles.overlay, { backgroundColor: isDark ? 'rgba(0,0,0,0.3)' : 'rgba(255,255,255,0.1)' }]}>
               {verificationSuccess ? (
@@ -124,11 +130,20 @@ export function FaceVerificationModal({ visible, onVerify, onCancel }) {
               <Text style={[styles.instruction, { color: colors.text }]}>
                 {faceData
                   ? `Hold still for ${countdown}s...`
-                  : "Position your face in the frame"}
+                  : 'Position your face in the frame'}
               </Text>
               <Text style={[styles.subInstruction, { color: colors.textSecondary }]}>
-                {faceData ? "Identity located. Verifying security..." : "Keep your device steady and look into the camera."}
+                {faceData ? 'Identity located. Verifying security...' : 'Keep your device steady and look into the camera.'}
               </Text>
+              {/* Fallback button if face detection doesn't auto-trigger after 5s */}
+              {showManualCapture && !faceData && (
+                <TouchableOpacity
+                  style={[styles.manualBtn, { backgroundColor: colors.primary }]}
+                  onPress={handleVerify}
+                >
+                  <Text style={styles.manualBtnText}>Capture Manually</Text>
+                </TouchableOpacity>
+              )}
             </>
           )}
         </View>
@@ -201,5 +216,16 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     fontSize: 14,
     opacity: 0.8,
+  },
+  manualBtn: {
+    marginTop: 20,
+    paddingVertical: 14,
+    paddingHorizontal: 32,
+    borderRadius: 16,
+  },
+  manualBtnText: {
+    color: '#fff',
+    fontSize: 15,
+    fontWeight: '700',
   }
 });
