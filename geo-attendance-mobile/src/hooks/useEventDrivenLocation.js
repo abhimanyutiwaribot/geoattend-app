@@ -28,12 +28,12 @@ export function useEventDrivenLocation({ session, officeGeofence }) {
   useEffect(() => {
     pipelineRef.current = new LocationEventPipeline({
       validator: {
-        maxAccuracy: 50,
-        maxSpeed: 33.33 // ~120 km/h
+        maxAccuracy: 80,   // Rejects readings worse than 80m — filters bad indoor GPS noise
+        maxSpeed: 33.33
       },
-      smootherBufferSize: 3,
+      smootherBufferSize: 3, // Average over 3 readings — reduces GPS drift jitter on the map dot
       stateMachine: {
-        debounceTime: 30000 // 30 seconds
+        debounceTime: 15000 // 15s — faster geofence confirmation vs old 30s, still avoids false flips
       }
     });
 
@@ -92,27 +92,27 @@ export function useEventDrivenLocation({ session, officeGeofence }) {
     }
   }, [officeGeofence]);
 
-  // Start/stop location watching based on session
+  // Start/stop location watching based on session or geofence presence
   useEffect(() => {
-    if (!session?.attendanceId) {
-      // No active session - stop watching
+    // We need location updates to check geofence BEFORE starting attendance
+    // and to keep tracking DURING attendance.
+    if (officeGeofence) {
+      startWatching();
+    } else {
       stopWatching();
-      return;
     }
-
-    // Active session - start watching
-    startWatching();
 
     return () => {
       stopWatching();
     };
-  }, [session?.attendanceId]);
+  }, [session?.attendanceId, officeGeofence]);
 
   /**
    * Start watching location (event stream from OS)
    */
   const startWatching = async () => {
     try {
+      console.log('🚀 [Hook] startWatching invoked');
       // Request permissions
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== 'granted') {
@@ -127,20 +127,18 @@ export function useEventDrivenLocation({ session, officeGeofence }) {
         watchSubscriptionRef.current.remove();
       }
 
-      console.log('🎯 [Hook] Starting location watch...');
+      console.log('🎯 [Hook] Subscribing to OS Location Stream...');
 
       // Subscribe to OS location stream
       watchSubscriptionRef.current = await Location.watchPositionAsync(
         {
-          // EVENT-DRIVEN CONFIGURATION
-          accuracy: Location.Accuracy.High,
-          timeInterval: 30000,      // Push update every 30 seconds
-          distanceInterval: 15,     // OR when user moves 15 meters
+          accuracy: Location.Accuracy.Balanced, // Was High — Balanced uses cell+GPS, saves ~25% battery
+          timeInterval: 10000,                  // Was 5000 — 10s is plenty for stationary office users
+          distanceInterval: 10,                 // Was 5m — 10m filters GPS drift (typical indoor drift is 3-8m)
           mayShowUserSettingsDialog: true
         },
         (location) => {
-          // LOCATION EVENT RECEIVED FROM OS
-          console.log('📡 [Hook] Location event from OS');
+          console.log('🛰️ [Hook] RAW OS LOCATION RECEIVED:', location.coords.latitude, location.coords.longitude);
 
           // Create event object
           const locationEvent = {
@@ -161,9 +159,9 @@ export function useEventDrivenLocation({ session, officeGeofence }) {
         }
       );
 
-      console.log('✅ [Hook] Location watch started - listening for events');
+      console.log('✅ [Hook] Subscription active');
     } catch (error) {
-      console.error('❌ [Hook] Error starting location watch:', error);
+      console.error('❌ [Hook] Fatal error in startWatching:', error);
     }
   };
 
