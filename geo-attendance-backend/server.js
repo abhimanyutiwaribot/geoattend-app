@@ -52,8 +52,19 @@ app.get("/health", (req, res) => {
 // });
 
 const PORT = process.env.PORT || 3001;
-app.listen(PORT, () => {
+app.listen(PORT, async () => {
     console.log(`Server running on port ${PORT}`);
+
+    // Pre-load face recognition models so first check-in isn't slow
+    try {
+        const RealFaceRecognitionService = require('./src/services/realFaceRecognitionService');
+        await RealFaceRecognitionService.loadModels();
+        console.log('✅ [FaceAPI] Real face recognition is ACTIVE');
+    } catch (err) {
+        console.error('❌ [FaceAPI] Face recognition models failed to load:', err.message);
+        console.error('   → Ensure model files exist at /models/ (ssdMobilenetv1, faceLandmark68Net, faceRecognitionNet)');
+        console.error('   → Face enrollment and check-in will be UNAVAILABLE until models are loaded');
+    }
 
     // Start background workers
     const presenceScoreWorker = require('./src/workers/presenceScoreWorker');
