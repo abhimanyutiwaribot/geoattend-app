@@ -21,27 +21,31 @@ export function useOfficeGeofence() {
 
   const fetchGeofence = async () => {
     try {
-      // Fetch user's assigned geofence from backend
+      console.log('📡 [Geofence] Fetching from backend...');
       const response = await api.get('/user/my-geofence');
+      console.log('📡 [Geofence] Response:', JSON.stringify(response.data, null, 2));
 
-      if (response.data?.data?.geofence) {
+      if (response.data?.success && response.data?.data?.geofence) {
         const officeData = response.data.data.geofence;
+        console.log(`✅ [Geofence] Found ${officeData.type}: ${officeData.name}`);
+        if (officeData.type === 'circle') {
+          console.log(`📍 [Geofence] Center: ${officeData.center?.lat}, ${officeData.center?.lng} | Rad: ${officeData.radius}m`);
+        } else {
+          console.log(`📍 [Geofence] Polygon Points: ${officeData.polygon?.length}`);
+        }
 
         setGeofence({
           type: officeData.type || 'circle',
           name: officeData.name || 'Office',
-          // For circle type
-          center: officeData.center || { lat: 28.6139, lng: 77.2090 },
+          center: officeData.center || (officeData.type === 'polygon' ? null : { lat: 28.6139, lng: 77.2090 }),
           radius: officeData.radius || 100,
-          // For polygon type
           polygon: officeData.polygon || null
         });
       } else {
-        console.log('No geofence assigned to user, using default');
+        console.log('⚠️ [Geofence] No geofence assigned to user or success=false');
       }
     } catch (error) {
-      console.log('Failed to fetch geofence, using default:', error.message);
-      // Keep default values
+      console.error('❌ [Geofence] Failed to fetch:', error.message);
     } finally {
       setLoading(false);
     }
