@@ -24,9 +24,10 @@ export default function Dashboard() {
   if (loading) {
     return (
       <Layout>
-        <div className="flex flex-col items-center justify-center py-24 space-y-4">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-500"></div>
-          <p className="text-slate-500 font-medium animate-pulse">Loading Dashboard...</p>
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '60vh', gap: '1rem' }}>
+          <div style={{ width: '24px', height: '24px', border: '3px solid var(--accents-2)', borderTopColor: 'var(--text-primary)', borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
+          <p style={{ color: 'var(--text-secondary)', fontWeight: 500, fontSize: '0.875rem' }}>Loading Overview...</p>
+          <style>{`@keyframes spin { 100% { transform: rotate(360deg); } }`}</style>
         </div>
       </Layout>
     );
@@ -34,123 +35,138 @@ export default function Dashboard() {
 
   return (
     <Layout>
-      <div className="space-y-10 max-w-[1200px] mx-auto">
-        {/* Header */}
-        <div className="flex items-center justify-between">
-          <div>
-            <h2 className="text-3xl font-black text-white tracking-tight">System Summary</h2>
-            <p className="text-slate-400 mt-1 font-medium">Daily attendance and staff overview</p>
-          </div>
-          <div className="flex items-center gap-2 px-3 py-1 bg-emerald-500/10 rounded-full border border-emerald-500/20">
-            <div className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse"></div>
-            <span className="text-[10px] font-black text-emerald-400 uppercase tracking-widest">System Live</span>
-          </div>
-        </div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
 
-        {/* Stats Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          <SimpleStatCard
-            title="Total Staff"
-            value={stats?.overview?.totalUsers || 0}
-            icon="👥"
-            color="emerald"
-          />
-          <SimpleStatCard
-            title="Checked In"
-            value={stats?.overview?.activeSessions || 0}
-            icon="✅"
-            color="sky"
-          />
-          <SimpleStatCard
-            title="On Leave"
-            value={stats?.stats?.totalOnLeave || 0}
-            icon="🏖️"
-            color="indigo"
-          />
-          <SimpleStatCard
-            title="Flagged"
-            value={stats?.overview?.suspiciousActivities || 0}
-            icon="🚨"
-            color="rose"
-          />
-        </div>
-
-        {/* Content Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Weekly Attendance */}
-          <div className="lg:col-span-2 bg-slate-900 border border-slate-800 rounded-3xl p-6">
-            <h3 className="text-sm font-black text-white uppercase tracking-widest mb-6">Weekly Attendance</h3>
-            {stats?.weeklyTrend && stats.weeklyTrend.length > 0 ? (
-              <div className="space-y-4">
-                {stats.weeklyTrend.map((day) => (
-                  <div key={day._id} className="flex items-center gap-4">
-                    <span className="text-xs font-bold text-slate-500 w-24 uppercase tracking-tighter">{day._id}</span>
-                    <div className="flex-1 h-3 bg-slate-950 rounded-full overflow-hidden">
-                      <div
-                        className="h-full bg-emerald-500 rounded-full transition-all duration-1000 ease-out"
-                        style={{ width: `${Math.min((day.count / (stats?.overview?.totalUsers || 10)) * 100, 100)}%` }}
-                      ></div>
-                    </div>
-                    <span className="text-xs font-mono font-bold text-slate-300 w-8">{day.count}</span>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <p className="py-12 text-center text-xs font-bold text-slate-600 uppercase tracking-widest italic">No Trend Data Available</p>
-            )}
-          </div>
-
-          {/* Productivity / Health Stats */}
-          {/* <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 space-y-6">
-            <h3 className="text-sm font-black text-white uppercase tracking-widest">Attendance Health</h3>
-
-            <div className="space-y-4">
-              <HealthItem label="Activity Score" value="94.2%" color="text-emerald-400" />
-              <HealthItem label="Avg Presence" value="7.8h" color="text-sky-400" />
-              <HealthItem label="Verification Rate" value="99.1%" color="text-indigo-400" />
-            </div>
-
-            <div className="pt-6 border-t border-slate-800">
-              <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-3">Quick Actions</p>
-              <button className="w-full py-3 bg-slate-800 hover:bg-slate-750 text-white rounded-2xl text-xs font-bold transition-all active:scale-95">
-                Download Daily Report
-              </button>
-            </div>
+        {/* Vercel Header */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '1rem' }}>
+          <h1 style={{ fontSize: '2rem', fontWeight: 600, letterSpacing: '-0.04em', margin: 0, color: 'var(--text-primary)' }}>Overview</h1>
+          {/* <div style={{ display: 'flex', gap: '0.75rem' }}>
+            <button className="v-btn">View Metrics</button>
+            <button className="v-btn v-btn-primary" style={{ background: '#fff', color: '#000' }}>Export Report</button>
           </div> */}
         </div>
 
-        <div className="pt-8 text-center opacity-20">
-          <p className="text-[10px] font-black text-slate-500 uppercase tracking-[0.3em]">System Overview Dashboard</p>
+        {/* Stats Grid */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
+          <StatCard title="Total Staff" value={stats?.overview?.totalUsers || 0} />
+          <StatCard title="Checked In" value={stats?.overview?.activeSessions || 0} />
+          <StatCard title="On Leave" value={stats?.stats?.totalOnLeave || 0} />
+          <StatCard title="Suspicious Activity" value={stats?.overview?.suspiciousActivities || 0} isWarning={stats?.overview?.suspiciousActivities > 0} />
+        </div>
+
+        {/* Chart / List area */}
+        <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '1.5rem', marginTop: '1rem' }}>
+
+          {/* Main Chart Card */}
+          <div className="v-card" style={{ padding: 0, display: 'flex', flexDirection: 'column' }}>
+            <div style={{ padding: '1.5rem', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <h3 style={{ fontSize: '1rem', fontWeight: 600, margin: 0 }}>Weekly Attendance Trend</h3>
+              <span style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}>Last 7 Days</span>
+            </div>
+
+            <div style={{ padding: '1.5rem', flex: 1, display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+              {stats?.weeklyTrend && stats.weeklyTrend.length > 0 ? (
+                stats.weeklyTrend.map((day) => {
+                  const maxVal = stats?.overview?.totalUsers || 10;
+                  const percent = Math.min((day.count / maxVal) * 100, 100);
+                  return (
+                    <div key={day._id} style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                      <span style={{ width: '40px', fontSize: '0.8125rem', color: 'var(--text-secondary)', textTransform: 'capitalize' }}>
+                        {day._id.substring(0, 3)}
+                      </span>
+                      <div style={{ flex: 1, height: '24px', display: 'flex', alignItems: 'center' }}>
+                        <div style={{
+                          height: '100%',
+                          width: `${percent}%`,
+                          background: 'var(--text-primary)',
+                          transition: 'width 1s ease-out',
+                          borderRadius: '2px'
+                        }} />
+                      </div>
+                      <span style={{ width: '24px', textAlign: 'right', fontSize: '0.875rem', fontWeight: 500 }}>
+                        {day.count}
+                      </span>
+                    </div>
+                  );
+                })
+              ) : (
+                <div style={{ padding: '2rem 0', color: 'var(--text-secondary)', fontSize: '0.875rem', textAlign: 'center' }}>
+                  No trend data available for this week.
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* System Status */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+            <div className="v-card">
+              <h3 style={{ fontSize: '1rem', fontWeight: 600, margin: '0 0 1rem 0' }}>System Status</h3>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                <StatusRow label="Live Tracking Core" />
+                <StatusRow label="Face Verification Engine" />
+                <StatusRow label="Geofence Monitoring" />
+              </div>
+            </div>
+
+            {/* Quick Actions placeholder (Vercel style Event Log) */}
+            <div className="v-card" style={{ flex: 1 }}>
+              <h3 style={{ fontSize: '1rem', fontWeight: 600, margin: '0 0 1rem 0' }}>Quick Actions</h3>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                <a href="/presence" style={{
+                  display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                  padding: '0.75rem', border: '1px solid var(--border)', borderRadius: '6px',
+                  color: 'var(--text-primary)', textDecoration: 'none', fontSize: '0.875rem',
+                  fontWeight: 500, background: 'rgba(255,255,255,0.02)'
+                }}>
+                  Live Radar View <IconArrowRight />
+                </a>
+                <a href="/suspicious" style={{
+                  display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                  padding: '0.75rem', border: '1px solid var(--border)', borderRadius: '6px',
+                  color: 'var(--geist-error)', textDecoration: 'none', fontSize: '0.875rem',
+                  fontWeight: 500, background: 'rgba(238,0,0,0.05)'
+                }}>
+                  Review Flagged <IconArrowRight />
+                </a>
+              </div>
+            </div>
+          </div>
+
         </div>
       </div>
     </Layout>
   );
 }
 
-function SimpleStatCard({ title, value, icon, color }) {
-  const colors = {
-    emerald: 'border-emerald-500/20 bg-emerald-500/5 text-emerald-400',
-    sky: 'border-sky-500/20 bg-sky-500/5 text-sky-400',
-    indigo: 'border-indigo-500/20 bg-indigo-500/5 text-indigo-400',
-    rose: 'border-rose-500/20 bg-rose-500/5 text-rose-400',
-  };
-
+function StatCard({ title, value, isWarning }) {
   return (
-    <div className={`p-6 rounded-[2.5rem] border ${colors[color]} transition-all hover:-translate-y-1`}>
-      <div className="flex items-center justify-between mb-2">
-        <span className="text-[10px] font-black uppercase tracking-widest opacity-70">{title}</span>
-        <span className="text-lg">{icon}</span>
+    <div className="v-card" style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', padding: '1.5rem' }}>
+      <div style={{ fontSize: '0.8125rem', color: 'var(--text-secondary)', fontWeight: 500, letterSpacing: '0.02em' }}>
+        {title}
       </div>
-      <p className="text-3xl font-black text-white tracking-tighter">{value}</p>
+      <div style={{ fontSize: '2.5rem', fontWeight: 700, letterSpacing: '-0.04em', lineHeight: 1, color: isWarning ? 'var(--geist-error)' : 'var(--text-primary)' }}>
+        {value}
+      </div>
     </div>
   );
 }
 
-function HealthItem({ label, value, color }) {
+function StatusRow({ label }) {
   return (
-    <div className="flex items-center justify-between">
-      <span className="text-xs font-bold text-slate-500 uppercase tracking-tighter">{label}</span>
-      <span className={`text-sm font-black ${color} tracking-tight`}>{value}</span>
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.5rem 0', borderBottom: '1px solid var(--border)' }}>
+      <span style={{ fontSize: '0.875rem', color: 'var(--text-primary)', fontWeight: 500 }}>{label}</span>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+        <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'var(--geist-success)' }} />
+        <span style={{ fontSize: '0.875rem', fontWeight: 500, color: 'var(--geist-success)' }}>Ready</span>
+      </div>
     </div>
+  );
+}
+
+function IconArrowRight() {
+  return (
+    <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
+      <line x1="5" y1="12" x2="19" y2="12" /><polyline points="12 5 19 12 12 19" />
+    </svg>
   );
 }

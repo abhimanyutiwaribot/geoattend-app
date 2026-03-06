@@ -42,109 +42,136 @@ export default function LeaveManagement() {
     }
   };
 
-  const getStatusBadge = (status) => {
+  const getStatusColor = (status) => {
     switch (status) {
-      case 'approved': return 'bg-green-500/20 text-green-400 border-green-500/30';
-      case 'rejected': return 'bg-red-500/20 text-red-400 border-red-500/30';
-      case 'pending': return 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30';
-      default: return 'bg-slate-500/20 text-slate-400 border-slate-500/30';
+      case 'approved': return 'var(--geist-success)';
+      case 'rejected': return 'var(--geist-error)';
+      case 'pending': return 'var(--geist-warning)';
+      default: return 'var(--text-secondary)';
     }
   };
 
   return (
     <Layout>
-      <div className="space-y-6">
-        <div className="flex items-center justify-between">
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+
+        {/* Header Section */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginTop: '1rem' }}>
           <div>
-            <h2 className="text-3xl font-bold text-white">🗓️ Leave Management</h2>
-            <p className="text-slate-400 mt-1">Review and approve employee leave requests</p>
+            <h1 style={{ fontSize: '2rem', fontWeight: 600, letterSpacing: '-0.04em', margin: 0, color: 'var(--text-primary)' }}>Leave Management</h1>
+            <p style={{ color: 'var(--text-secondary)', fontSize: '0.875rem', marginTop: '0.25rem' }}>Review, approve, and manage staff leave requests.</p>
           </div>
-          <div className="flex bg-slate-800 p-1 rounded-lg">
-            {['pending', 'approved', 'rejected', 'all'].map((s) => (
-              <button
-                key={s}
-                onClick={() => setFilter(s === 'all' ? '' : s)}
-                className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${(filter === s || (filter === '' && s === 'all'))
-                    ? 'bg-primary-600 text-white shadow-lg'
-                    : 'text-slate-400 hover:text-slate-200'
-                  }`}
-              >
-                {s.charAt(0).toUpperCase() + s.slice(1)}
-              </button>
-            ))}
+
+          {/* Segmented Control */}
+          <div style={{ display: 'flex', background: 'var(--accents-1)', padding: '2px', borderRadius: '6px', border: '1px solid var(--border)' }}>
+            {['pending', 'approved', 'rejected', 'all'].map((s) => {
+              const isActive = filter === s || (filter === '' && s === 'all');
+              return (
+                <button
+                  key={s}
+                  onClick={() => setFilter(s === 'all' ? '' : s)}
+                  style={{
+                    padding: '0.375rem 0.75rem',
+                    fontSize: '0.8125rem',
+                    fontWeight: 500,
+                    borderRadius: '4px',
+                    border: 'none',
+                    cursor: 'pointer',
+                    background: isActive ? 'var(--text-primary)' : 'transparent',
+                    color: isActive ? 'var(--bg-base)' : 'var(--text-secondary)',
+                    transition: 'all 0.1s ease',
+                    textTransform: 'capitalize'
+                  }}
+                  onMouseEnter={e => { if (!isActive) e.currentTarget.style.color = 'var(--text-primary)' }}
+                  onMouseLeave={e => { if (!isActive) e.currentTarget.style.color = 'var(--text-secondary)' }}
+                >
+                  {s}
+                </button>
+              );
+            })}
           </div>
         </div>
 
         {loading ? (
-          <div className="flex items-center justify-center py-12">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '6rem 0' }}>
+            <div style={{ width: '24px', height: '24px', border: '3px solid var(--accents-2)', borderTopColor: 'var(--text-primary)', borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
           </div>
         ) : (
-          <div className="card">
-            <div className="overflow-x-auto">
-              <table className="w-full text-left">
+          <div className="v-card" style={{ padding: 0, overflow: 'hidden' }}>
+            <div style={{ overflowX: 'auto' }}>
+              <table className="v-table">
                 <thead>
-                  <tr className="border-b border-slate-700">
-                    <th className="py-3 px-4 text-slate-400 font-medium text-sm">Employee</th>
-                    <th className="py-3 px-4 text-slate-400 font-medium text-sm">Type</th>
-                    <th className="py-3 px-4 text-slate-400 font-medium text-sm">Duration</th>
-                    <th className="py-3 px-4 text-slate-400 font-medium text-sm">Reason</th>
-                    <th className="py-3 px-4 text-slate-400 font-medium text-sm">Status</th>
-                    <th className="py-3 px-4 text-slate-400 font-medium text-sm text-right">Actions</th>
+                  <tr>
+                    <th>Employee</th>
+                    <th>Type</th>
+                    <th>Duration</th>
+                    <th>Reason</th>
+                    <th>Status</th>
+                    <th style={{ textAlign: 'right' }}>Actions</th>
                   </tr>
                 </thead>
                 <tbody>
                   {leaves.length > 0 ? leaves.map((leave) => (
-                    <tr key={leave._id} className="border-b border-slate-700/50 hover:bg-slate-800/30">
-                      <td className="py-4 px-4">
-                        <div className="font-medium text-white">{leave.userId?.name}</div>
-                        <div className="text-xs text-slate-500">{leave.userId?.email}</div>
+                    <tr key={leave._id}>
+                      <td>
+                        <div style={{ fontWeight: 500, color: 'var(--text-primary)' }}>{leave.userId?.name}</div>
+                        <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>{leave.userId?.email}</div>
                       </td>
-                      <td className="py-4 px-4">
-                        <span className="capitalize text-slate-300">{leave.type}</span>
+                      <td style={{ textTransform: 'capitalize' }}>
+                        {leave.type}
                       </td>
-                      <td className="py-4 px-4">
-                        <div className="text-sm text-slate-300">
+                      <td>
+                        <div style={{ fontSize: '0.875rem' }}>
                           {new Date(leave.startDate).toLocaleDateString()}
                         </div>
-                        <div className="text-xs text-slate-500">
+                        <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
                           to {new Date(leave.endDate).toLocaleDateString()}
                         </div>
                       </td>
-                      <td className="py-4 px-4 truncate max-w-[200px]" title={leave.reason}>
-                        <span className="text-slate-400 text-sm">{leave.reason}</span>
+                      <td style={{ maxWidth: '200px' }}>
+                        <div style={{
+                          whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                          fontSize: '0.875rem', color: 'var(--text-secondary)'
+                        }} title={leave.reason}>
+                          {leave.reason}
+                        </div>
                       </td>
-                      <td className="py-4 px-4">
-                        <span className={`px-2 py-1 rounded text-xs font-bold border uppercase ${getStatusBadge(leave.status)}`}>
-                          {leave.status}
-                        </span>
+                      <td>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                          <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: getStatusColor(leave.status) }} />
+                          <span style={{ fontSize: '0.75rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em', color: getStatusColor(leave.status) }}>
+                            {leave.status}
+                          </span>
+                        </div>
                       </td>
-                      <td className="py-4 px-4 text-right">
+                      <td style={{ textAlign: 'right' }}>
                         {leave.status === 'pending' ? (
-                          <div className="flex justify-end gap-2">
+                          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' }}>
                             <button
                               disabled={processingId === leave._id}
                               onClick={() => handleStatusUpdate(leave._id, 'approved')}
-                              className="px-3 py-1 bg-green-600/20 text-green-400 border border-green-600/30 rounded hover:bg-green-600/40 text-xs font-semibold"
+                              className="v-btn"
+                              style={{ height: '28px', fontSize: '0.75rem', borderColor: 'var(--geist-success)', color: 'var(--geist-success)' }}
                             >
                               Approve
                             </button>
                             <button
                               disabled={processingId === leave._id}
                               onClick={() => handleStatusUpdate(leave._id, 'rejected')}
-                              className="px-3 py-1 bg-red-600/20 text-red-400 border border-red-600/30 rounded hover:bg-red-600/40 text-xs font-semibold"
+                              className="v-btn"
+                              style={{ height: '28px', fontSize: '0.75rem', borderColor: 'var(--geist-error)', color: 'var(--geist-error)' }}
                             >
                               Reject
                             </button>
                           </div>
                         ) : (
-                          <span className="text-xs text-slate-600 italic">Processed</span>
+                          <span style={{ fontSize: '0.8125rem', color: 'var(--text-secondary)' }}>Processed</span>
                         )}
                       </td>
                     </tr>
                   )) : (
                     <tr>
-                      <td colSpan="6" className="py-8 text-center text-slate-500">
+                      <td colSpan="6" style={{ padding: '4rem 0', textAlign: 'center', color: 'var(--text-secondary)', fontSize: '0.875rem' }}>
                         No leave requests found for this filter.
                       </td>
                     </tr>

@@ -36,26 +36,35 @@ export default function Attendance() {
     setFilters((prev) => ({
       ...prev,
       [name]: value,
-      page: 1, // Reset to first page on filter change
+      page: 1,
     }));
   };
 
   return (
     <Layout>
-      <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <h2 className="text-3xl font-bold text-white">Attendance History</h2>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+
+        {/* Header */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '1rem' }}>
+          <div>
+            <h1 style={{ fontSize: '2rem', fontWeight: 600, letterSpacing: '-0.04em', margin: 0, color: 'var(--text-primary)' }}>Attendance History</h1>
+            <p style={{ color: 'var(--text-secondary)', fontSize: '0.875rem', marginTop: '0.25rem' }}>View session logs, tracking metrics, and identity verifications.</p>
+          </div>
+          {/* <button className="v-btn v-btn-primary" style={{ background: '#fff', color: '#000' }}>Export Logs</button> */}
         </div>
 
         {/* Filters */}
-        <div className="card grid grid-cols-1 md:grid-cols-4 gap-4">
-          <div>
-            <label className="block text-sm font-medium text-slate-400 mb-1">Status</label>
+        <div className="v-card" style={{ padding: '1.25rem 1.5rem', display: 'flex', gap: '1rem', flexWrap: 'wrap', alignItems: 'flex-end' }}>
+          <div style={{ flex: '1 1 200px', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+            <label style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-secondary)' }}>Status</label>
             <select
               name="status"
-              className="input text-sm"
               value={filters.status}
               onChange={handleFilterChange}
+              style={{
+                width: '100%', padding: '0.625rem', background: 'var(--bg-base)', border: '1px solid var(--border)',
+                borderRadius: '6px', color: 'var(--text-primary)', fontSize: '0.875rem', outline: 'none'
+              }}
             >
               <option value="">All Statuses</option>
               <option value="tentative">Tentative</option>
@@ -65,134 +74,125 @@ export default function Attendance() {
               <option value="invalid">Invalid</option>
             </select>
           </div>
-          <div>
-            <label className="block text-sm font-medium text-slate-400 mb-1">Start Date</label>
+          <div style={{ flex: '1 1 200px', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+            <label style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-secondary)' }}>Start Date</label>
             <input
               type="date"
               name="startDate"
-              className="input text-sm"
               value={filters.startDate}
               onChange={handleFilterChange}
+              style={{
+                width: '100%', padding: '0.625rem', background: 'var(--bg-base)', border: '1px solid var(--border)',
+                borderRadius: '6px', color: 'var(--text-primary)', fontSize: '0.875rem', outline: 'none', colorScheme: 'dark'
+              }}
             />
           </div>
-          <div>
-            <label className="block text-sm font-medium text-slate-400 mb-1">End Date</label>
+          <div style={{ flex: '1 1 200px', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+            <label style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-secondary)' }}>End Date</label>
             <input
               type="date"
               name="endDate"
-              className="input text-sm"
               value={filters.endDate}
               onChange={handleFilterChange}
+              style={{
+                width: '100%', padding: '0.625rem', background: 'var(--bg-base)', border: '1px solid var(--border)',
+                borderRadius: '6px', color: 'var(--text-primary)', fontSize: '0.875rem', outline: 'none', colorScheme: 'dark'
+              }}
             />
           </div>
-          <div className="flex items-end">
-            <button
-              onClick={() => setFilters({ page: 1, status: '', startDate: '', endDate: '' })}
-              className="btn btn-secondary w-full text-sm"
-            >
-              Reset Filters
-            </button>
-          </div>
+          <button
+            onClick={() => setFilters({ page: 1, status: '', startDate: '', endDate: '' })}
+            className="v-btn"
+            style={{ padding: '0.625rem 1.5rem', height: 'auto' }}
+          >
+            Reset
+          </button>
         </div>
 
-        {/* Attendance Table */}
-        <div className="card overflow-hidden">
+        {/* Table */}
+        <div className="v-card" style={{ padding: 0, overflow: 'hidden' }}>
           {loading ? (
-            <div className="flex items-center justify-center py-12">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '4rem 0' }}>
+              <div style={{ width: '24px', height: '24px', border: '3px solid var(--accents-2)', borderTopColor: 'var(--text-primary)', borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
             </div>
-          ) : attendances.length > 0 ? (
-            <>
-              <div className="overflow-x-auto">
-                <table className="table">
-                  <thead>
-                    <tr>
-                      <th>User</th>
-                      <th>Date</th>
-                      <th>Check-in</th>
-                      <th>Duration</th>
-                      <th>Score</th>
-                      <th>Status</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {attendances.map((record) => (
-                      <tr key={record._id}>
-                        <td>
-                          <div className="font-medium text-white">{record.userId?.name || 'Unknown'}</div>
-                          <div className="text-xs text-slate-400">{record.userId?.email || 'N/A'}</div>
-                        </td>
-                        <td className="text-slate-300">
-                          {format(new Date(record.startTime), 'MMM dd, yyyy')}
-                        </td>
-                        <td className="text-slate-300">
-                          {format(new Date(record.startTime), 'hh:mm a')}
-                        </td>
-                        <td className="text-slate-300">
-                          {record.totalDuration ? `${Math.round(record.totalDuration)} min` : '--'}
-                        </td>
-                        <td>
-                          <div className="flex items-center space-x-2">
-                            <span className={`font-bold ${record.validationScore >= 80 ? 'text-green-500' :
-                                record.validationScore >= 50 ? 'text-yellow-500' : 'text-red-500'
-                              }`}>
-                              {Math.round(record.validationScore)}
-                            </span>
-                            <div className="flex-1 bg-slate-700 h-1.5 w-16 rounded-full overflow-hidden">
-                              <div
-                                className={`h-full ${record.validationScore >= 80 ? 'bg-green-500' :
-                                    record.validationScore >= 50 ? 'bg-yellow-500' : 'bg-red-500'
-                                  }`}
-                                style={{ width: `${record.validationScore}%` }}
-                              />
-                            </div>
-                          </div>
-                        </td>
-                        <td>
-                          <span className={`status-badge ${record.status === 'confirmed' || record.status === 'completed' ? 'bg-green-600/20 text-green-400' :
-                              record.status === 'flagged' ? 'bg-red-600/20 text-red-400' :
-                                'bg-slate-700 text-slate-300'
-                            }`}>
-                            {record.status}
+          ) : attendances.length === 0 ? (
+            <div style={{ padding: '4rem 0', textAlign: 'center', color: 'var(--text-secondary)', fontSize: '0.875rem' }}>
+              No attendance records found matching filters.
+            </div>
+          ) : (
+            <div style={{ overflowX: 'auto' }}>
+              <table className="v-table">
+                <thead>
+                  <tr>
+                    <th>User</th>
+                    <th>Date</th>
+                    <th>Check-in</th>
+                    <th>Duration</th>
+                    <th>Score</th>
+                    <th>Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {attendances.map((record) => (
+                    <tr key={record._id}>
+                      <td>
+                        <div style={{ fontWeight: 500, color: 'var(--text-primary)' }}>{record.userId?.name || 'Unknown'}</div>
+                        <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>{record.userId?.email || 'N/A'}</div>
+                      </td>
+                      <td style={{ color: 'var(--text-secondary)' }}>
+                        {format(new Date(record.startTime), 'MMM dd, yyyy')}
+                      </td>
+                      <td style={{ color: 'var(--text-secondary)' }}>
+                        {format(new Date(record.startTime), 'hh:mm a')}
+                      </td>
+                      <td style={{ color: 'var(--text-secondary)' }}>
+                        {record.totalDuration ? `${Math.round(record.totalDuration)}m` : '--'}
+                      </td>
+                      <td>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                          <span style={{
+                            fontSize: '0.875rem', fontWeight: 600, width: '24px', textAlign: 'right',
+                            color: record.validationScore >= 80 ? 'var(--geist-success)' : record.validationScore >= 50 ? 'var(--geist-warning)' : 'var(--geist-error)'
+                          }}>
+                            {Math.round(record.validationScore)}
                           </span>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+                          <div style={{ flex: 1, width: '60px', height: '6px', background: 'var(--accents-2)', borderRadius: '99px' }}>
+                            <div style={{
+                              height: '100%', borderRadius: '99px',
+                              width: `${record.validationScore}%`,
+                              background: record.validationScore >= 80 ? 'var(--geist-success)' : record.validationScore >= 50 ? 'var(--geist-warning)' : 'var(--geist-error)'
+                            }} />
+                          </div>
+                        </div>
+                      </td>
+                      <td>
+                        <span style={{
+                          display: 'inline-block', padding: '2px 8px', borderRadius: '99px', fontSize: '0.75rem', fontWeight: 500, textTransform: 'capitalize',
+                          background: (record.status === 'confirmed' || record.status === 'completed') ? 'rgba(0,112,243,0.1)' :
+                            record.status === 'flagged' ? 'rgba(255,0,0,0.1)' : 'rgba(255,255,255,0.05)',
+                          color: (record.status === 'confirmed' || record.status === 'completed') ? 'var(--geist-success)' :
+                            record.status === 'flagged' ? 'var(--geist-error)' : 'var(--text-secondary)'
+                        }}>
+                          {record.status}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
 
               {/* Pagination */}
               {pagination && pagination.total > 1 && (
-                <div className="flex items-center justify-between px-6 py-4 border-t border-slate-700">
-                  <p className="text-slate-400 text-sm">
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '1rem 1.5rem', borderTop: '1px solid var(--border)' }}>
+                  <span style={{ color: 'var(--text-secondary)', fontSize: '0.875rem' }}>
                     Showing {attendances.length} records
-                  </p>
-                  <div className="flex space-x-2">
-                    <button
-                      onClick={() => setFilters(prev => ({ ...prev, page: prev.page - 1 }))}
-                      disabled={filters.page === 1}
-                      className="btn btn-secondary disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      Previous
-                    </button>
-                    <span className="px-4 py-2 text-white text-sm">
-                      Page {pagination.current} of {pagination.total}
-                    </span>
-                    <button
-                      onClick={() => setFilters(prev => ({ ...prev, page: prev.page + 1 }))}
-                      disabled={filters.page === pagination.total}
-                      className="btn btn-secondary disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      Next
-                    </button>
+                  </span>
+                  <div style={{ display: 'flex', gap: '0.5rem' }}>
+                    <button onClick={() => setFilters(prev => ({ ...prev, page: prev.page - 1 }))} disabled={filters.page === 1} className="v-btn" style={{ opacity: filters.page === 1 ? 0.5 : 1 }}>Previous</button>
+                    <button onClick={() => setFilters(prev => ({ ...prev, page: prev.page + 1 }))} disabled={filters.page === pagination.total} className="v-btn" style={{ opacity: filters.page === pagination.total ? 0.5 : 1 }}>Next</button>
                   </div>
                 </div>
               )}
-            </>
-          ) : (
-            <div className="py-12 text-center">
-              <p className="text-slate-400">No attendance records found with the current filters.</p>
             </div>
           )}
         </div>

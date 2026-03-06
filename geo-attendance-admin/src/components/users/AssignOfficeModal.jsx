@@ -36,115 +36,91 @@ export default function AssignOfficeModal({ user, onClose, onSuccess }) {
   };
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-slate-800 rounded-xl max-w-md w-full p-6">
+    <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.8)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10000, padding: '1rem', backdropFilter: 'blur(4px)' }}>
+      <div className="v-card" style={{ maxWidth: '440px', width: '100%', display: 'flex', flexDirection: 'column', gap: '1.5rem', position: 'relative' }}>
+
         {/* Header */}
-        <div className="flex items-center justify-between mb-6">
-          <h3 className="text-xl font-bold text-white">Assign Office</h3>
-          <button
-            onClick={onClose}
-            className="text-slate-400 hover:text-white"
-          >
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <h3 style={{ fontSize: '1.25rem', fontWeight: 600, color: 'var(--text-primary)', margin: 0, letterSpacing: '-0.02em' }}>Assign Facility</h3>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer' }}>
+            <svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
             </svg>
           </button>
         </div>
 
         {/* User Info */}
-        <div className="bg-slate-700 rounded-lg p-4 mb-6">
-          <div className="flex items-center space-x-3">
-            <div className="w-12 h-12 bg-primary-600 rounded-full flex items-center justify-center">
-              <span className="text-white font-semibold text-lg">
-                {user.name.charAt(0).toUpperCase()}
-              </span>
-            </div>
-            <div>
-              <p className="font-medium text-white">{user.name}</p>
-              <p className="text-sm text-slate-400">{user.email}</p>
-            </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', padding: '1rem', background: 'var(--accents-1)', borderRadius: '6px', border: '1px solid var(--border)' }}>
+          <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: 'var(--accents-2)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1rem', fontWeight: 600, color: 'var(--text-primary)' }}>
+            {user.name.charAt(0).toUpperCase()}
+          </div>
+          <div>
+            <div style={{ fontWeight: 600, color: 'var(--text-primary)', fontSize: '0.875rem' }}>{user.name}</div>
+            <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>{user.email}</div>
           </div>
         </div>
 
         {/* Form */}
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
           {error && (
-            <div className="bg-red-500/10 border border-red-500 text-red-500 px-4 py-3 rounded-lg text-sm">
+            <div style={{ background: 'rgba(239, 68, 68, 0.1)', border: '1px solid var(--geist-error)', color: 'var(--geist-error)', padding: '0.75rem', borderRadius: '6px', fontSize: '0.875rem' }}>
               {error}
             </div>
           )}
 
-          <div>
-            <label className="block text-sm font-medium text-slate-300 mb-2">
-              Select Office
-            </label>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+            <label style={{ fontSize: '0.875rem', fontWeight: 500, color: 'var(--text-secondary)' }}>Facility Restraint</label>
             <select
               value={selectedOffice}
               onChange={(e) => setSelectedOffice(e.target.value)}
-              className="input"
               required
+              style={{ width: '100%', padding: '0.75rem', background: 'var(--bg-base)', border: '1px solid var(--border)', borderRadius: '6px', color: 'var(--text-primary)', fontSize: '0.875rem', outline: 'none' }}
             >
-              <option value="">-- Select Office --</option>
+              <option value="">-- No Restriction (Global) --</option>
               {offices.map((office) => (
                 <option key={office._id} value={office._id}>
-                  {office.name} ({office.radius}m radius)
+                  {office.name}
                 </option>
               ))}
             </select>
-            <p className="text-xs text-slate-400 mt-2">
-              User will only be able to mark attendance at the selected office
-            </p>
+            <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>Restricts attendance marking solely to this geofence.</span>
           </div>
 
-          {/* Current Assignment */}
           {user.assignedOfficeId && (
-            <div className="bg-blue-500/10 border border-blue-500 rounded-lg p-3">
-              <p className="text-sm text-blue-400">
-                <strong>Currently assigned to:</strong> {user.assignedOfficeId.name}
-              </p>
+            <div style={{ fontSize: '0.75rem', color: 'var(--brand-accent)', padding: '0.5rem 0' }}>
+              Current binding: <strong style={{ color: 'var(--text-primary)' }}>{user.assignedOfficeId.name}</strong>
             </div>
           )}
 
           {/* Actions */}
-          <div className="flex space-x-3 pt-4">
-            <button
-              type="button"
-              onClick={onClose}
-              className="flex-1 btn btn-secondary"
-              disabled={loading}
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              className="flex-1 btn btn-primary"
-              disabled={loading}
-            >
-              {loading ? 'Assigning...' : 'Assign Office'}
+          <div style={{ display: 'flex', gap: '1rem', marginTop: '0.5rem' }}>
+            <button type="button" onClick={onClose} className="v-btn" style={{ flex: 1, height: '40px' }} disabled={loading}>Close</button>
+            <button type="submit" className="v-btn v-btn-primary" style={{ flex: 1, height: '40px' }} disabled={loading}>
+              {loading ? 'Binding...' : 'Apply Rule'}
             </button>
           </div>
 
-          {/* Remove Assignment */}
           {user.assignedOfficeId && (
             <button
               type="button"
               onClick={async () => {
-                if (confirm('Remove office assignment? User will be able to mark attendance at any office.')) {
+                if (confirm('Sever facility binding? User will be able to mark attendance globally again.')) {
                   setLoading(true);
                   try {
                     await api.assignOffice(user._id, null);
                     onSuccess();
                   } catch (error) {
-                    setError('Failed to remove assignment');
+                    setError('Failed to decouple rule');
                   } finally {
                     setLoading(false);
                   }
                 }
               }}
-              className="w-full btn btn-danger text-sm"
+              className="v-btn"
+              style={{ width: '100%', height: '40px', borderColor: 'var(--geist-error)', color: 'var(--geist-error)' }}
               disabled={loading}
             >
-              Remove Office Assignment
+              Sever Binding Constraint
             </button>
           )}
         </form>

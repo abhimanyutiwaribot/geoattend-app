@@ -4,6 +4,7 @@ import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import Users from './pages/Users';
 import Geofences from './pages/Geofences';
+import CreateGeofence from './pages/CreateGeofence';
 import Attendance from './pages/Attendance';
 import Reports from './pages/Reports';
 import Suspicious from './pages/Suspicious';
@@ -55,6 +56,14 @@ function AppRoutes() {
         element={
           <PrivateRoute>
             <Geofences />
+          </PrivateRoute>
+        }
+      />
+      <Route
+        path="/geofences/create"
+        element={
+          <PrivateRoute>
+            <CreateGeofence />
           </PrivateRoute>
         }
       />

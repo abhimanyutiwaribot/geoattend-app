@@ -1,16 +1,12 @@
-import Sidebar from './Sidebar';
 import Header from './Header';
 
 export default function Layout({ children }) {
   return (
-    <div className="flex min-h-screen bg-slate-950">
-      <Sidebar />
-      <div className="flex-1 flex flex-col">
-        <Header />
-        <main className="flex-1 p-8">
-          {children}
-        </main>
-      </div>
+    <div style={{ display: 'flex', minHeight: '100vh', flexDirection: 'column', background: 'var(--bg-base)' }}>
+      <Header />
+      <main style={{ flex: 1, padding: '2rem 1.5rem', maxWidth: '1200px', margin: '0 auto', width: '100%' }}>
+        {children}
+      </main>
     </div>
   );
 }

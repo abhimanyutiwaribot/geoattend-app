@@ -28,7 +28,6 @@ export default function Reports() {
   const handleDownloadCSV = () => {
     if (!report || !report.data) return;
 
-    // Simple CSV generator
     const headers = Object.keys(report.data[0] || {}).join(',');
     const rows = report.data.map(item => Object.values(item).join(',')).join('\n');
     const csvContent = "data:text/csv;charset=utf-8," + headers + "\n" + rows;
@@ -44,76 +43,95 @@ export default function Reports() {
 
   return (
     <Layout>
-      <div className="space-y-8">
-        <h2 className="text-3xl font-bold text-white">Reports & Analytics</h2>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+
+        {/* Header Section */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginTop: '1rem' }}>
+          <div>
+            <h1 style={{ fontSize: '2rem', fontWeight: 600, letterSpacing: '-0.04em', margin: 0, color: 'var(--text-primary)' }}>Reports & Analytics</h1>
+            <p style={{ color: 'var(--text-secondary)', fontSize: '0.875rem', marginTop: '0.25rem' }}>Generate and export system-wide data extracts.</p>
+          </div>
+        </div>
 
         {/* Configuration Card */}
-        <div className="card space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div>
-              <label className="block text-sm font-medium text-slate-400 mb-2">Report Type</label>
+        <div className="v-card" style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1.5rem' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+              <label style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-secondary)' }}>Report Type</label>
               <select
-                className="input"
                 value={options.type}
                 onChange={(e) => setOptions(prev => ({ ...prev, type: e.target.value }))}
+                style={{
+                  width: '100%', padding: '0.625rem', background: 'var(--bg-base)', border: '1px solid var(--border)',
+                  borderRadius: '6px', color: 'var(--text-primary)', fontSize: '0.875rem', outline: 'none'
+                }}
               >
                 <option value="daily_attendance">Daily Attendance Summary</option>
                 <option value="suspicious_activity">Suspicious Activity Report</option>
                 <option value="user_analytics">User Performance Analytics</option>
               </select>
             </div>
-            <div>
-              <label className="block text-sm font-medium text-slate-400 mb-2">Start Date</label>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+              <label style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-secondary)' }}>Start Date</label>
               <input
                 type="date"
-                className="input"
                 value={options.startDate}
                 onChange={(e) => setOptions(prev => ({ ...prev, startDate: e.target.value }))}
+                style={{
+                  width: '100%', padding: '0.625rem', background: 'var(--bg-base)', border: '1px solid var(--border)',
+                  borderRadius: '6px', color: 'var(--text-primary)', fontSize: '0.875rem', outline: 'none', colorScheme: 'dark'
+                }}
               />
             </div>
-            <div>
-              <label className="block text-sm font-medium text-slate-400 mb-2">End Date</label>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+              <label style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-secondary)' }}>End Date</label>
               <input
                 type="date"
-                className="input"
                 value={options.endDate}
                 onChange={(e) => setOptions(prev => ({ ...prev, endDate: e.target.value }))}
+                style={{
+                  width: '100%', padding: '0.625rem', background: 'var(--bg-base)', border: '1px solid var(--border)',
+                  borderRadius: '6px', color: 'var(--text-primary)', fontSize: '0.875rem', outline: 'none', colorScheme: 'dark'
+                }}
               />
             </div>
           </div>
-          <button
-            onClick={handleGenerateReport}
-            disabled={loading}
-            className="btn btn-primary w-full md:w-auto px-12"
-          >
-            {loading ? 'Generating...' : 'Generate Report'}
-          </button>
+          <div>
+            <button
+              onClick={handleGenerateReport}
+              disabled={loading}
+              className="v-btn v-btn-primary"
+              style={{ background: '#fff', color: '#000', opacity: loading ? 0.7 : 1 }}
+            >
+              {loading ? 'Generating...' : 'Generate Report'}
+            </button>
+          </div>
         </div>
 
         {/* Report Display */}
         {report && (
-          <div className="space-y-6 animate-fade-in">
-            <div className="flex items-center justify-between">
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+            <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
               <div>
-                <h3 className="text-2xl font-bold text-white capitalize">
+                <h3 style={{ fontSize: '1.25rem', fontWeight: 600, color: 'var(--text-primary)', margin: '0 0 0.25rem 0', textTransform: 'capitalize' }}>
                   {report.type.replace(/_/g, ' ')}
                 </h3>
-                <p className="text-slate-400">
+                <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', margin: 0 }}>
                   Range: {format(new Date(report.dateRange.startDate), 'MMM dd, yyyy')} - {format(new Date(report.dateRange.endDate), 'MMM dd, yyyy')}
                 </p>
               </div>
-              <button onClick={handleDownloadCSV} className="btn btn-secondary text-sm">
+              <button onClick={handleDownloadCSV} className="v-btn">
                 Download CSV
               </button>
             </div>
 
-            <div className="card overflow-hidden p-0">
-              <div className="overflow-x-auto">
-                <table className="table">
+            <div className="v-card" style={{ padding: 0, overflow: 'hidden' }}>
+              <div style={{ overflowX: 'auto' }}>
+                <table className="v-table">
                   <thead>
                     <tr>
                       {report.data.length > 0 && Object.keys(report.data[0]).map(key => (
-                        <th key={key} className="capitalize">{key.replace(/([A-Z])/g, ' $1')}</th>
+                        <th key={key} style={{ textTransform: 'capitalize' }}>{key.replace(/([A-Z])/g, ' $1')}</th>
                       ))}
                     </tr>
                   </thead>
@@ -121,7 +139,7 @@ export default function Reports() {
                     {report.data.map((row, idx) => (
                       <tr key={idx}>
                         {Object.entries(row).map(([key, value], vIdx) => (
-                          <td key={vIdx} className="text-slate-300">
+                          <td key={vIdx} style={{ whiteSpace: 'nowrap', color: 'var(--text-secondary)' }}>
                             {typeof value === 'number' && key.toLowerCase().includes('rate')
                               ? `${(value * 100).toFixed(1)}%`
                               : typeof value === 'number' && key.toLowerCase().includes('duration')
@@ -136,7 +154,7 @@ export default function Reports() {
                 </table>
               </div>
               {report.data.length === 0 && (
-                <div className="p-12 text-center text-slate-400">
+                <div style={{ padding: '4rem 0', textAlign: 'center', color: 'var(--text-secondary)', fontSize: '0.875rem' }}>
                   No data points found for this report and date range.
                 </div>
               )}
