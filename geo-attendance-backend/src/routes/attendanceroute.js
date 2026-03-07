@@ -192,19 +192,8 @@ attendanceRouter.post("/validate", authMiddleware, async function (req, res) {
                 await attendance.save();
         }
 
-        // Calculate validation score (average of last 10 readings)
-        const recentMotions = await MotionModel.find({
-            attendanceId: attendanceId
-        }).sort({ timestamp: -1 }).limit(10);
-
-        const avgConfidence = recentMotions.length > 0
-            ? recentMotions.reduce((sum, m) => sum + (m.confidence || 0), 0) / recentMotions.length
-            : 0;
-
-        attendance.validationScore = Math.min(100, avgConfidence);
-        await attendance.save();
-
-
+        // We no longer overwrite the comprehensive validationScore with just the motion score.
+        // The PresenceEngineWorker handles updating attendance.validationScore across all 5 signals.
         res.json({
             success: true,
             message: "Presence Validation",

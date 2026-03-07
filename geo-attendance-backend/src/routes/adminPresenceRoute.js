@@ -57,13 +57,7 @@ adminPresenceRouter.get('/dashboard', adminAuthMiddleware, async (req, res) => {
             riskLevel: latestScore.riskLevel,
             flags: latestScore.flags,
             lastUpdated: latestScore.timestamp,
-            signals: {
-              geofence: latestScore.signals?.geofence?.score ?? 0,
-              locationConsistency: latestScore.signals?.locationConsistency?.score ?? 0,
-              deviceActivity: latestScore.signals?.deviceActivity?.score ?? 0,
-              motionPattern: latestScore.signals?.motionPattern?.score ?? 0,
-              faceIdentity: latestScore.signals?.faceIdentity?.score ?? 0
-            }
+            signals: latestScore.signals
           } : null
         };
       })
