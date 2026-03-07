@@ -78,8 +78,18 @@ class PresenceEngineService {
       // 5. Face Identity Signal (Face Rec)
       signals.faceIdentity = await this.calculateFaceIdentitySignal(userId, attendanceId);
 
+      // --- DEBUG LOGGING ADDED FOR VISIBILITY ---
+      console.log('\n=======================================');
+      console.log('📈 ENGINESERVICE: CALCULATING PRESENCE');
+      console.log('=======================================');
+      for (const [key, sig] of Object.entries(signals)) {
+        console.log(`- ${key.toUpperCase()}: Score ${sig.score} (Weight: ${sig.weight * 100}%) -> Contributes: ${sig.score * sig.weight}`);
+      }
+
       // Calculate weighted total score
       const totalScore = this.calculateWeightedScore(signals);
+
+      console.log(`\n=> FINAL CALCULATED TOTAL SCORE: ${totalScore}%\n=======================================\n`);
 
       // Determine confidence level
       const confidence = this.determineConfidence(totalScore);
