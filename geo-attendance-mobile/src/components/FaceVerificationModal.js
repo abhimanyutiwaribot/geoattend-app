@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Modal, ActivityIndicator } from 'react-native';
-import { Camera, CameraView } from 'expo-camera';
-import * as FaceDetector from 'expo-face-detector';
+import { Camera, useCameraDevice } from 'react-native-vision-camera';
 import { Ionicons } from '@expo/vector-icons';
 import { capturePhotoAsBase64, validateImageSize } from '../utils/cameraUtils';
 import { useTheme } from '../context/ThemeContext';
@@ -15,42 +14,32 @@ export function FaceVerificationModal({ visible, onVerify, onCancel }) {
   const [showManualCapture, setShowManualCapture] = useState(false);
   const cameraRef = useRef(null);
 
+  const device = useCameraDevice('front');
+
   useEffect(() => {
     if (visible) {
       setFaceData(null);
       setIsVerifying(false);
       setVerificationSuccess(false);
       setCountdown(3);
-      setShowManualCapture(false);
-      // Show manual capture button after 5s if face detector hasn't fired
-      const fallback = setTimeout(() => setShowManualCapture(true), 5000);
-      return () => clearTimeout(fallback);
+      setShowManualCapture(true); // Always show manual capture since we removed the continuous face detector
     }
   }, [visible]);
 
-  // Real face detection handler — called by CameraView when a face enters/leaves frame
-  const handleFacesDetected = ({ faces }) => {
-    if (!isVerifying && !verificationSuccess) {
-      setFaceData(faces.length > 0 ? faces[0] : null);
-    }
-  };
-
-  // Countdown: starts when face is detected, resets if face is lost before 0
+  // Start a simulated countdown when modal opens, or they can click manual capture
   useEffect(() => {
-    if (!visible || isVerifying) return;
+    if (!visible || isVerifying || !device) return;
 
-    if (faceData && countdown > 0) {
+    if (countdown > 0) {
       const timer = setTimeout(() => setCountdown(prev => prev - 1), 1000);
       return () => clearTimeout(timer);
-    } else if (faceData && countdown === 0) {
+    } else if (countdown === 0) {
       handleVerify();
-    } else if (!faceData) {
-      // Face lost — reset countdown
-      setCountdown(3);
     }
-  }, [visible, faceData, countdown, isVerifying]);
+  }, [visible, countdown, isVerifying, device]);
 
   const handleVerify = async () => {
+    if (isVerifying) return;
     setIsVerifying(true);
     try {
       const photoBase64 = await capturePhotoAsBase64(cameraRef);
@@ -82,36 +71,36 @@ export function FaceVerificationModal({ visible, onVerify, onCancel }) {
         </View>
 
         <View style={[styles.cameraContainer, { backgroundColor: colors.surface, borderColor: verificationSuccess ? colors.primary : colors.border }]}>
-          <CameraView
-            ref={cameraRef}
-            style={styles.camera}
-            facing="front"
-            onFacesDetected={handleFacesDetected}
-            faceDetectorSettings={{
-              mode: FaceDetector.FaceDetectorMode.fast,
-              detectLandmarks: FaceDetector.FaceDetectorLandmarks.none,
-              runClassifications: FaceDetector.FaceDetectorClassifications.none,
-              minDetectionInterval: 200,
-              tracking: true,
-            }}
-          >
-            <View style={[styles.overlay, { backgroundColor: isDark ? 'rgba(0,0,0,0.3)' : 'rgba(255,255,255,0.1)' }]}>
-              {verificationSuccess ? (
-                <View style={[styles.successOverlay, { backgroundColor: 'rgba(34, 197, 94, 0.2)' }]}>
-                  <Ionicons name="checkmark-circle" size={100} color={colors.primary} />
-                </View>
-              ) : (
-                <View style={[
-                  styles.faceFrame,
-                  faceData ? { borderColor: colors.primary, backgroundColor: isDark ? 'rgba(34, 197, 94, 0.1)' : 'rgba(34, 197, 94, 0.2)' } : { borderColor: colors.textMuted }
-                ]}>
-                  {faceData && countdown > 0 && (
-                    <Text style={[styles.countdownText, { color: colors.primary }]}>{countdown}</Text>
-                  )}
-                </View>
-              )}
+          {device == null ? (
+            <View style={styles.overlay}>
+              <ActivityIndicator size="large" color={colors.primary} />
             </View>
-          </CameraView>
+          ) : (
+            <Camera
+              ref={cameraRef}
+              style={styles.camera}
+              device={device}
+              isActive={visible && !verificationSuccess}
+              photo={true}
+            >
+              <View style={[styles.overlay, { backgroundColor: isDark ? 'rgba(0,0,0,0.3)' : 'rgba(255,255,255,0.1)' }]}>
+                {verificationSuccess ? (
+                  <View style={[styles.successOverlay, { backgroundColor: colors.primarySoft }]}>
+                    <Ionicons name="checkmark-circle" size={100} color={colors.primary} />
+                  </View>
+                ) : (
+                  <View style={[
+                    styles.faceFrame,
+                    countdown > 0 ? { borderColor: colors.primary, backgroundColor: colors.primarySoft } : { borderColor: colors.textMuted }
+                  ]}>
+                    {countdown > 0 && (
+                      <Text style={[styles.countdownText, { color: colors.primary }]}>{countdown}</Text>
+                    )}
+                  </View>
+                )}
+              </View>
+            </Camera>
+          )}
         </View>
 
         <View style={styles.footer}>
@@ -128,20 +117,20 @@ export function FaceVerificationModal({ visible, onVerify, onCancel }) {
           ) : (
             <>
               <Text style={[styles.instruction, { color: colors.text }]}>
-                {faceData
+                {countdown > 0
                   ? `Hold still for ${countdown}s...`
                   : 'Position your face in the frame'}
               </Text>
               <Text style={[styles.subInstruction, { color: colors.textSecondary }]}>
-                {faceData ? 'Identity located. Verifying security...' : 'Keep your device steady and look into the camera.'}
+                {countdown > 0 ? 'Verifying security...' : 'Keep your device steady and look into the camera.'}
               </Text>
-              {/* Fallback button if face detection doesn't auto-trigger after 5s */}
-              {showManualCapture && !faceData && (
+
+              {showManualCapture && (
                 <TouchableOpacity
                   style={[styles.manualBtn, { backgroundColor: colors.primary }]}
                   onPress={handleVerify}
                 >
-                  <Text style={styles.manualBtnText}>Capture Manually</Text>
+                  <Text style={styles.manualBtnText}>Capture Identity</Text>
                 </TouchableOpacity>
               )}
             </>

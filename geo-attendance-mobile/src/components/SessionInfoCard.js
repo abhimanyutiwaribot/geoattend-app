@@ -56,7 +56,7 @@ export function SessionInfoCard({ session, checkingSession }) {
     <View style={styles.container}>
       {/* Session Duration Header */}
       <View style={styles.header}>
-        <View style={[styles.statusBadge, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.05)' : '#f1f5f9' }]}>
+        <View style={[styles.statusBadge, { backgroundColor: colors.primarySoft }]}>
           <View style={[styles.statusDot, { backgroundColor: getScoreColor() }]} />
           <Text style={[styles.statusLabel, { color: colors.text }]}>{session.status.toUpperCase()}</Text>
         </View>
@@ -64,7 +64,7 @@ export function SessionInfoCard({ session, checkingSession }) {
       </View>
 
       {/* Trust & Info Grid */}
-      <View style={[styles.grid, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.03)' : '#f8fafc' }]}>
+      <View style={[styles.grid, { backgroundColor: colors.primarySoft }]}>
         <View style={styles.gridItem}>
           <Ionicons name="shield-checkmark" size={20} color={getScoreColor()} />
           <View>
@@ -87,7 +87,7 @@ export function SessionInfoCard({ session, checkingSession }) {
       </View>
 
       {/* Progress Bar for Trust */}
-      <View style={styles.progressBg}>
+      <View style={[styles.progressBg, { backgroundColor: colors.border }]}>
         <View style={[styles.progressFill, { width: `${score}%`, backgroundColor: getScoreColor() }]} />
       </View>
     </View>
@@ -177,7 +177,6 @@ const styles = StyleSheet.create({
   },
   progressBg: {
     height: 4,
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
     borderRadius: 2,
     overflow: 'hidden',
   },

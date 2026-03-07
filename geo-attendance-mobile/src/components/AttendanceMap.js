@@ -4,28 +4,28 @@ import MapView, { Circle, Polygon, PROVIDER_DEFAULT } from 'react-native-maps';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useTheme } from '../context/ThemeContext';
 
-// Dark mode map style for Google Maps
+// Dark mode map style for Google Maps (Stark Vercel Dark)
 const darkMapStyle = [
-  { "elementType": "geometry", "stylers": [{ "color": "#1e293b" }] },
-  { "elementType": "labels.text.fill", "stylers": [{ "color": "#94a3b8" }] },
-  { "elementType": "labels.text.stroke", "stylers": [{ "color": "#020617" }] },
-  { "featureType": "administrative", "elementType": "geometry", "stylers": [{ "color": "#475569" }] },
-  { "featureType": "administrative.country", "elementType": "labels.text.fill", "stylers": [{ "color": "#cbd5e1" }] },
-  { "featureType": "administrative.locality", "elementType": "labels.text.fill", "stylers": [{ "color": "#e2e8f0" }] },
-  { "featureType": "poi", "elementType": "labels.text.fill", "stylers": [{ "color": "#64748b" }] },
-  { "featureType": "poi.park", "elementType": "geometry", "stylers": [{ "color": "#0f172a" }] },
-  { "featureType": "road", "elementType": "geometry", "stylers": [{ "color": "#334155" }] },
-  { "featureType": "road", "elementType": "geometry.stroke", "stylers": [{ "color": "#1e293b" }] },
-  { "featureType": "water", "elementType": "geometry", "stylers": [{ "color": "#0c4a6e" }] }
+  { "elementType": "geometry", "stylers": [{ "color": "#0a0a0a" }] },
+  { "elementType": "labels.text.fill", "stylers": [{ "color": "#888888" }] },
+  { "elementType": "labels.text.stroke", "stylers": [{ "color": "#000000" }] },
+  { "featureType": "administrative", "elementType": "geometry", "stylers": [{ "color": "#333333" }] },
+  { "featureType": "administrative.country", "elementType": "labels.text.fill", "stylers": [{ "color": "#ededed" }] },
+  { "featureType": "administrative.locality", "elementType": "labels.text.fill", "stylers": [{ "color": "#ededed" }] },
+  { "featureType": "poi", "elementType": "labels.text.fill", "stylers": [{ "color": "#666666" }] },
+  { "featureType": "poi.park", "elementType": "geometry", "stylers": [{ "color": "#111111" }] },
+  { "featureType": "road", "elementType": "geometry", "stylers": [{ "color": "#222222" }] },
+  { "featureType": "road", "elementType": "geometry.stroke", "stylers": [{ "color": "#0a0a0a" }] },
+  { "featureType": "water", "elementType": "geometry", "stylers": [{ "color": "#111111" }] }
 ];
 
-// Light mode clean map style
+// Light mode map style (Stark Vercel Light)
 const lightMapStyle = [
-  { "elementType": "geometry", "stylers": [{ "color": "#f1f5f9" }] },
-  { "elementType": "labels.text.fill", "stylers": [{ "color": "#64748b" }] },
-  { "elementType": "labels.text.stroke", "stylers": [{ "color": "#f8fafc" }] },
+  { "elementType": "geometry", "stylers": [{ "color": "#f5f5f5" }] },
+  { "elementType": "labels.text.fill", "stylers": [{ "color": "#666666" }] },
+  { "elementType": "labels.text.stroke", "stylers": [{ "color": "#ffffff" }] },
   { "featureType": "road", "elementType": "geometry", "stylers": [{ "color": "#ffffff" }] },
-  { "featureType": "water", "elementType": "geometry", "stylers": [{ "color": "#e0f2fe" }] }
+  { "featureType": "water", "elementType": "geometry", "stylers": [{ "color": "#eaeaea" }] }
 ];
 
 export function AttendanceMap({
@@ -125,7 +125,7 @@ export function AttendanceMap({
   };
 
   return (
-    <View style={fullScreen ? styles.fullScreenContainer : getContainerStyle(geofenceStatus, officeGeofence)}>
+    <View style={fullScreen ? styles.fullScreenContainer : getContainerStyle(geofenceStatus, officeGeofence, colors, isDark)}>
       <View style={styles.mapContainer}>
         <MapView
           ref={mapRef}
@@ -151,8 +151,8 @@ export function AttendanceMap({
                     latitude: p.lat,
                     longitude: p.lng
                   }))}
-                  fillColor={geofenceStatus?.isWithin ? 'rgba(34, 197, 94, 0.2)' : 'rgba(239, 68, 68, 0.2)'}
-                  strokeColor={geofenceStatus?.isWithin ? '#22c55e' : '#ef4444'}
+                  fillColor={geofenceStatus?.isWithin ? colors.primarySoft : colors.dangerSoft}
+                  strokeColor={geofenceStatus?.isWithin ? colors.primary : colors.danger}
                   strokeWidth={2}
                 />
               ) : officeGeofence.center && officeGeofence.radius ? (
@@ -162,8 +162,8 @@ export function AttendanceMap({
                     longitude: officeGeofence.center.lng,
                   }}
                   radius={officeGeofence.radius}
-                  fillColor={geofenceStatus?.isWithin ? 'rgba(34, 197, 94, 0.2)' : 'rgba(239, 68, 68, 0.2)'}
-                  strokeColor={geofenceStatus?.isWithin ? '#22c55e' : '#ef4444'}
+                  fillColor={geofenceStatus?.isWithin ? colors.primarySoft : colors.dangerSoft}
+                  strokeColor={geofenceStatus?.isWithin ? colors.primary : colors.danger}
                   strokeWidth={2}
                 />
               ) : null}
@@ -178,9 +178,9 @@ export function AttendanceMap({
                   longitude: currentLocation.longitude,
                 }}
                 radius={10}
-                fillColor={geofenceStatus?.isWithin ? 'rgba(34, 197, 94, 0.15)' : 'rgba(239, 68, 68, 0.15)'}
-                strokeColor={geofenceStatus?.isWithin ? 'rgba(9, 24, 15, 0.4)' : 'rgba(255, 255, 255, 0.4)'}
-                strokeWidth={2}
+                fillColor={geofenceStatus?.isWithin ? colors.primarySoft : colors.dangerSoft}
+                strokeColor={geofenceStatus?.isWithin ? colors.primary : colors.danger}
+                strokeWidth={1}
               />
               <Circle
                 center={{
@@ -188,8 +188,8 @@ export function AttendanceMap({
                   longitude: currentLocation.longitude,
                 }}
                 radius={3}
-                fillColor={geofenceStatus?.isWithin ? (isDark ? '#05170bff' : '#22c55e') : '#ef4444'}
-                strokeColor="#ffffff"
+                fillColor={geofenceStatus?.isWithin ? colors.primary : colors.danger}
+                strokeColor={colors.surface}
                 strokeWidth={1}
               />
             </>
@@ -239,14 +239,14 @@ const styles = StyleSheet.create({
   },
 });
 
-const getContainerStyle = (geofenceStatus, officeGeofence) => {
+const getContainerStyle = (geofenceStatus, officeGeofence, colors, isDark) => {
   let glowColor;
   if (!officeGeofence) {
-    glowColor = '#64748b';
+    glowColor = isDark ? '#222' : '#eaeaea';
   } else if (geofenceStatus?.isWithin) {
-    glowColor = '#22c55e';
+    glowColor = isDark ? '#ffffff' : '#000000';
   } else {
-    glowColor = '#ef4444';
+    glowColor = colors.danger;
   }
 
   return {

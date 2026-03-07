@@ -22,7 +22,7 @@ export function AttendanceButton({
         style={[
           styles.button,
           { backgroundColor: colors.primary },
-          isDisabled && [styles.buttonDisabled, { backgroundColor: isDark ? '#1e293b' : '#cbd5e1' }],
+          isDisabled && [styles.buttonDisabled, { backgroundColor: isDark ? '#333' : '#eaeaea' }],
         ]}
         onPress={onStart}
         disabled={isDisabled}
@@ -30,10 +30,10 @@ export function AttendanceButton({
         <Ionicons
           name={isOutside ? "lock-closed" : "finger-print"}
           size={20}
-          color={isDark ? "#022c22" : "#ffffff"}
+          color={isDark ? "#000000" : "#ffffff"}
           style={{ marginRight: 8 }}
         />
-        <Text style={[styles.buttonText, { color: isDark ? "#022c22" : "#ffffff" }]}>
+        <Text style={[styles.buttonText, { color: isDark ? "#000000" : "#ffffff" }]}>
           {loading
             ? 'Authenticating...'
             : isOutside
