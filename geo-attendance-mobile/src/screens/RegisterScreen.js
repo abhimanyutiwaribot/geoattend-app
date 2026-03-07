@@ -127,9 +127,9 @@ export default function RegisterScreen({ navigation }) {
               disabled={loading}
             >
               {loading ? (
-                <ActivityIndicator color={isDark ? "#022c22" : "#ffffff"} />
+                <ActivityIndicator color={isDark ? "#000000" : "#ffffff"} />
               ) : (
-                <Text style={[styles.buttonText, { color: isDark ? "#022c22" : "#ffffff" }]}>Register Now</Text>
+                <Text style={[styles.buttonText, { color: isDark ? "#000000" : "#ffffff" }]}>Register Now</Text>
               )}
             </TouchableOpacity>
 

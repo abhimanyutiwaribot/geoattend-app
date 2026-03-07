@@ -37,7 +37,7 @@ export default function HistoryScreen() {
       case 'confirmed': return { bg: colors.primarySoft, color: colors.primary, label: 'Verified' };
       case 'flagged': return { bg: colors.dangerSoft, color: colors.danger, label: 'Flagged' };
       case 'monitoring': return { bg: colors.warningSoft, color: colors.warning, label: 'Monitoring' };
-      default: return { bg: isDark ? 'rgba(148, 163, 184, 0.1)' : '#f1f5f9', color: colors.textMuted, label: status };
+      default: return { bg: colors.primarySoft, color: colors.textMuted, label: status };
     }
   };
 

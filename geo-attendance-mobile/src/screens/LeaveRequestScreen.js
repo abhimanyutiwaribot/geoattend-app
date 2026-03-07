@@ -91,7 +91,7 @@ export default function LeaveRequestScreen() {
               ]}
               onPress={() => setType(item.value)}
             >
-              <View style={[styles.typeIconBox, { backgroundColor: isDark ? 'rgba(51, 65, 85, 0.2)' : '#f1f5f9' }, type === item.value && { backgroundColor: isDark ? 'rgba(34, 197, 94, 0.15)' : 'rgba(34, 197, 94, 0.1)' }]}>
+              <View style={[styles.typeIconBox, { backgroundColor: colors.primarySoft }, type === item.value && { backgroundColor: colors.primarySoft }]}>
                 <Ionicons
                   name={item.icon}
                   size={20}
@@ -171,11 +171,11 @@ export default function LeaveRequestScreen() {
           disabled={loading}
         >
           {loading ? (
-            <ActivityIndicator color={isDark ? "#022c22" : "#ffffff"} />
+            <ActivityIndicator color={isDark ? "#000000" : "#ffffff"} />
           ) : (
             <>
-              <Text style={[styles.submitText, { color: isDark ? "#022c22" : "#ffffff" }]}>Confirm Request</Text>
-              <Ionicons name="paper-plane" size={18} color={isDark ? "#022c22" : "#ffffff"} style={{ marginLeft: 8 }} />
+              <Text style={[styles.submitText, { color: isDark ? "#000000" : "#ffffff" }]}>Confirm Request</Text>
+              <Ionicons name="paper-plane" size={18} color={isDark ? "#000000" : "#ffffff"} style={{ marginLeft: 8 }} />
             </>
           )}
         </TouchableOpacity>

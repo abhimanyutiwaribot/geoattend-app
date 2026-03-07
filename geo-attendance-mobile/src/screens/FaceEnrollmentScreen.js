@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Alert, ActivityIndicator, Platform, Animated } from 'react-native';
-import { Camera, CameraView } from 'expo-camera';
+import { Camera, useCameraDevice, useCameraPermission } from 'react-native-vision-camera';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { api } from '../api/client';
@@ -9,7 +9,6 @@ import { useTheme } from '../context/ThemeContext';
 
 export default function FaceEnrollmentScreen({ navigation }) {
   const { colors, isDark } = useTheme();
-  const [hasPermission, setHasPermission] = useState(null);
   const [faceData, setFaceData] = useState(null);
   const [isEnrolling, setIsEnrolling] = useState(false);
   const [enrollmentComplete, setEnrollmentComplete] = useState(false);
@@ -17,16 +16,14 @@ export default function FaceEnrollmentScreen({ navigation }) {
 
   const scaleAnim = useRef(new Animated.Value(0)).current;
 
+  const { hasPermission, requestPermission } = useCameraPermission();
+  const device = useCameraDevice('front');
+
   useEffect(() => {
-    (async () => {
-      try {
-        const { status } = await Camera.requestCameraPermissionsAsync();
-        setHasPermission(status === 'granted');
-      } catch (error) {
-        setHasPermission(true);
-      }
-    })();
-  }, []);
+    if (!hasPermission) {
+      requestPermission();
+    }
+  }, [hasPermission]);
 
   useEffect(() => {
     if (enrollmentComplete) {
@@ -39,13 +36,7 @@ export default function FaceEnrollmentScreen({ navigation }) {
     }
   }, [enrollmentComplete]);
 
-  const handleFacesDetected = ({ faces }) => {
-    if (faces.length > 0) {
-      setFaceData(faces[0]);
-    } else {
-      setFaceData(null);
-    }
-  };
+
 
   const startEnrollment = async () => {
     if (isEnrolling) return;
@@ -121,24 +112,31 @@ export default function FaceEnrollmentScreen({ navigation }) {
           </Animated.View>
         ) : (
           <View style={styles.cameraFrame}>
-            <CameraView
-              ref={cameraRef}
-              style={styles.camera}
-              facing="front"
-              onFacesDetected={handleFacesDetected}
-            >
-              <View style={[styles.overlay, { backgroundColor: isDark ? 'rgba(2, 6, 23, 0.4)' : 'rgba(255, 255, 255, 0.2)' }]}>
-                <View style={[
-                  styles.faceGuide,
-                  faceData ? { borderColor: colors.primary, backgroundColor: isDark ? 'rgba(34, 197, 94, 0.05)' : 'rgba(34, 197, 94, 0.1)' } : { borderColor: colors.textMuted }
-                ]}>
-                  <View style={[styles.corner, styles.topLeft, faceData && { borderColor: colors.primary }]} />
-                  <View style={[styles.corner, styles.topRight, faceData && { borderColor: colors.primary }]} />
-                  <View style={[styles.corner, styles.bottomLeft, faceData && { borderColor: colors.primary }]} />
-                  <View style={[styles.corner, styles.bottomRight, faceData && { borderColor: colors.primary }]} />
-                </View>
+            {device == null ? (
+              <View style={styles.overlay}>
+                <ActivityIndicator size="large" color={colors.primary} />
               </View>
-            </CameraView>
+            ) : (
+              <Camera
+                ref={cameraRef}
+                style={styles.camera}
+                device={device}
+                isActive={!enrollmentComplete}
+                photo={true}
+              >
+                <View style={[styles.overlay, { backgroundColor: isDark ? 'rgba(2, 6, 23, 0.4)' : 'rgba(255, 255, 255, 0.2)' }]}>
+                  <View style={[
+                    styles.faceGuide,
+                    { borderColor: colors.primary, backgroundColor: colors.primarySoft }
+                  ]}>
+                    <View style={[styles.corner, styles.topLeft, { borderColor: colors.primary }]} />
+                    <View style={[styles.corner, styles.topRight, { borderColor: colors.primary }]} />
+                    <View style={[styles.corner, styles.bottomLeft, { borderColor: colors.primary }]} />
+                    <View style={[styles.corner, styles.bottomRight, { borderColor: colors.primary }]} />
+                  </View>
+                </View>
+              </Camera>
+            )}
           </View>
         )}
       </View>
@@ -146,24 +144,24 @@ export default function FaceEnrollmentScreen({ navigation }) {
       {!enrollmentComplete && (
         <View style={styles.footer}>
           <Text style={[styles.instruction, { color: colors.textSecondary }]}>
-            {faceData ? "Identity aligned. Tap below to secure." : "Position your face in the center."}
+            Position your face in the center and tap to secure.
           </Text>
 
           <TouchableOpacity
             style={[
               styles.actionBtn,
-              faceData ? { backgroundColor: colors.primary, ...styles.actionBtnElevated } : { backgroundColor: colors.surface, borderColor: colors.border, borderWidth: 1 },
+              { backgroundColor: colors.primary, ...styles.actionBtnElevated },
               isEnrolling && { opacity: 0.6 }
             ]}
             onPress={startEnrollment}
             disabled={isEnrolling}
           >
             {isEnrolling ? (
-              <ActivityIndicator color={isDark ? "#022c22" : "#ffffff"} />
+              <ActivityIndicator color={isDark ? "#000000" : "#ffffff"} />
             ) : (
               <View style={styles.btnContent}>
-                <Ionicons name="finger-print" size={20} color={faceData ? (isDark ? "#022c22" : "#ffffff") : colors.textMuted} />
-                <Text style={[styles.btnText, { color: faceData ? (isDark ? "#022c22" : "#ffffff") : colors.textMuted }]}>Confirm Identity</Text>
+                <Ionicons name="finger-print" size={20} color={isDark ? "#000000" : "#ffffff"} />
+                <Text style={[styles.btnText, { color: isDark ? "#000000" : "#ffffff" }]}>Confirm Identity</Text>
               </View>
             )}
           </TouchableOpacity>
@@ -257,9 +255,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
   },
   actionBtnElevated: {
-    shadowColor: '#22c55e',
-    shadowOpacity: 0.3,
-    shadowRadius: 12,
+    shadowColor: '#000000',
+    shadowOpacity: 0.2,
+    shadowRadius: 10,
     elevation: 8,
   },
   btnContent: {

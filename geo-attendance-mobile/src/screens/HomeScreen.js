@@ -366,11 +366,10 @@ export default function HomeScreen() {
         </View>
       </View>
 
-      {/* Leave Banner Overlay */}
       {onLeaveToday && (
-        <View style={[styles.floatingLeaveBanner, { backgroundColor: isDark ? 'rgba(59, 130, 246, 0.9)' : 'rgba(255, 255, 255, 0.95)', borderColor: isDark ? 'transparent' : colors.border, borderWidth: isDark ? 0 : 1 }]}>
-          <Ionicons name="airplane" size={18} color={isDark ? "#ffffff" : colors.textMuted} />
-          <Text style={[styles.leaveText, { color: isDark ? "#ffffff" : colors.text }]}>On Leave: {onLeaveToday.type}</Text>
+        <View style={[styles.floatingLeaveBanner, { backgroundColor: colors.surface, borderColor: colors.border, borderWidth: 1 }]}>
+          <Ionicons name="airplane" size={18} color={colors.primary} />
+          <Text style={[styles.leaveText, { color: colors.text }]}>On Leave: {onLeaveToday.type}</Text>
         </View>
       )}
 
@@ -394,7 +393,7 @@ export default function HomeScreen() {
             <Ionicons
               name={session ? "pulse-outline" : "finger-print-outline"}
               size={30}
-              color="#22c55e"
+              color={colors.primary}
             />
           </TouchableOpacity>
         ) : (
@@ -502,7 +501,6 @@ const styles = StyleSheet.create({
     borderRadius: 4,
   },
   statusText: {
-    color: '#e5e7eb',
     fontSize: 13,
     fontWeight: '600',
   },

@@ -85,7 +85,7 @@ export default function NotificationsScreen() {
           <Text style={[styles.screenTitle, { color: colors.text }]}>Alerts</Text>
         </View>
         <TouchableOpacity
-          style={[styles.clearBtn, { backgroundColor: isDark ? 'rgba(51, 65, 85, 0.3)' : '#e2e8f0' }, items.length === 0 && { opacity: 0.5 }]}
+          style={[styles.clearBtn, { backgroundColor: colors.primarySoft }, items.length === 0 && { opacity: 0.5 }]}
           onPress={handleClear}
           disabled={items.length === 0}
         >

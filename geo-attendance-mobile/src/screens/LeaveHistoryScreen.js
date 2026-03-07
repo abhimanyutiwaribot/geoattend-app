@@ -34,8 +34,8 @@ export default function LeaveHistoryScreen() {
       case 'approved': return { color: colors.primary, bg: colors.primarySoft, icon: 'checkmark-circle' };
       case 'rejected': return { color: colors.danger, bg: colors.dangerSoft, icon: 'close-circle' };
       case 'pending': return { color: colors.warning, bg: colors.warningSoft, icon: 'time' };
-      case 'cancelled': return { color: colors.textMuted, bg: isDark ? 'rgba(100, 116, 139, 0.1)' : '#f1f5f9', icon: 'ban' };
-      default: return { color: colors.textMuted, bg: isDark ? 'rgba(148, 163, 184, 0.1)' : '#f1f5f9', icon: 'help-circle' };
+      case 'cancelled': return { color: colors.textMuted, bg: colors.primarySoft, icon: 'ban' };
+      default: return { color: colors.textMuted, bg: colors.primarySoft, icon: 'help-circle' };
     }
   };
 
@@ -61,7 +61,7 @@ export default function LeaveHistoryScreen() {
       <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
         <View style={styles.cardHeader}>
           <View style={styles.typeRow}>
-            <View style={[styles.iconContainer, { backgroundColor: isDark ? 'rgba(51, 65, 85, 0.2)' : '#f1f5f9' }]}>
+            <View style={[styles.iconContainer, { backgroundColor: colors.primarySoft }]}>
               <Ionicons name={getLeaveIcon(item.type)} size={18} color={colors.textMuted} />
             </View>
             <View>
@@ -75,7 +75,7 @@ export default function LeaveHistoryScreen() {
           </View>
         </View>
 
-        <View style={[styles.dateInfoBox, { backgroundColor: isDark ? 'rgba(15, 23, 42, 0.5)' : '#f8fafc' }]}>
+        <View style={[styles.dateInfoBox, { backgroundColor: colors.primarySoft }]}>
           <View style={styles.dateCol}>
             <Text style={[styles.dateLabel, { color: colors.textMuted }]}>FROM</Text>
             <Text style={[styles.dateValue, { color: colors.textSecondary }]}>{start.toLocaleDateString('en-US', { day: 'numeric', month: 'short' })}</Text>

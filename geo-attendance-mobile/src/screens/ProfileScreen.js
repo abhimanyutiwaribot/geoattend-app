@@ -39,17 +39,17 @@ export default function ProfileScreen() {
     <View style={[styles.headerCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
       <View style={styles.avatarContainer}>
         <View style={[styles.avatar, { backgroundColor: colors.primary }]}>
-          <Text style={[styles.avatarText, { color: isDark ? '#022c22' : '#ffffff' }]}>
+          <Text style={[styles.avatarText, { color: isDark ? '#000000' : '#ffffff' }]}>
             {(profile?.name || user?.name || '?')[0].toUpperCase()}
           </Text>
         </View>
-        <TouchableOpacity style={[styles.editAvatar, { borderColor: colors.surface }]}>
+        <TouchableOpacity style={[styles.editAvatar, { borderColor: colors.surface, backgroundColor: colors.accent }]}>
           <Ionicons name="camera" size={16} color="#ffffff" />
         </TouchableOpacity>
       </View>
       <View style={styles.headerInfo}>
         <Text style={[styles.userName, { color: colors.text }]}>{profile?.name || user?.name || 'User'}</Text>
-        <View style={[styles.roleBadge, { backgroundColor: isDark ? 'rgba(51, 65, 85, 0.5)' : '#e2e8f0' }]}>
+        <View style={[styles.roleBadge, { backgroundColor: colors.primarySoft }]}>
           <Text style={[styles.roleText, { color: colors.textSecondary }]}>Employee</Text>
         </View>
       </View>
@@ -59,7 +59,7 @@ export default function ProfileScreen() {
   const InfoRow = ({ label, value, icon }) => (
     <View style={styles.infoRow}>
       <View style={styles.infoLeft}>
-        <View style={[styles.iconBox, { backgroundColor: isDark ? 'rgba(51, 65, 85, 0.3)' : '#f1f5f9' }]}>
+        <View style={[styles.iconBox, { backgroundColor: colors.primarySoft }]}>
           <Ionicons name={icon} size={18} color={colors.textMuted} />
         </View>
         <Text style={[styles.infoLabel, { color: colors.textSecondary }]}>{label}</Text>
@@ -117,8 +117,8 @@ export default function ProfileScreen() {
                 <Switch
                   value={isDark}
                   onValueChange={toggleTheme}
-                  trackColor={{ false: '#cbd5e1', true: '#22c55e' }}
-                  thumbColor={Platform.OS === 'ios' ? '#ffffff' : isDark ? '#ffffff' : '#f4f3f4'}
+                  trackColor={{ false: colors.border, true: colors.primary }}
+                  thumbColor={Platform.OS === 'ios' ? '#ffffff' : (isDark ? '#000000' : '#ffffff')}
                 />
               </View>
             </View>
@@ -243,7 +243,6 @@ const styles = StyleSheet.create({
     width: 24,
     height: 24,
     borderRadius: 12,
-    backgroundColor: '#3b82f6',
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 2,
@@ -273,7 +272,7 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 12,
     fontWeight: '800',
-    color: '#475569',
+    color: '#888',
     textTransform: 'uppercase',
     letterSpacing: 1,
     marginBottom: 16,
