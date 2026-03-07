@@ -10,6 +10,7 @@ export default function PresenceDashboard() {
   const fetchDashboard = async () => {
     try {
       const response = await apiClient.get('/api/v1/admin/presence/dashboard');
+      console.log(response.data.data)
       setDashboardData(response.data.data);
       setLoading(false);
     } catch (error) {
@@ -112,7 +113,7 @@ export default function PresenceDashboard() {
                             <div>
                               <div style={{ fontWeight: 500, color: 'var(--text-primary)' }}>{session.user?.name}</div>
                               <div style={{ fontSize: '0.6875rem', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-                                {session.user?.employeeId || 'ID UNKNOWN'}
+                                {session.user?._id || 'ID UNKNOWN'}
                               </div>
                             </div>
                           </div>
@@ -124,11 +125,11 @@ export default function PresenceDashboard() {
                         </td>
                         <td>
                           <div style={{ display: 'flex', gap: '1.5rem', alignItems: 'center' }}>
-                            <SignalMeter label="GFN" score={session.presenceScore?.signals?.geofence} />
-                            <SignalMeter label="LOC" score={session.presenceScore?.signals?.locationConsistency} />
-                            <SignalMeter label="DEV" score={session.presenceScore?.signals?.deviceActivity} />
-                            <SignalMeter label="MOT" score={session.presenceScore?.signals?.motionPattern} />
-                            <SignalMeter label="FAC" score={session.presenceScore?.signals?.faceIdentity} />
+                            <SignalMeter label="GFN" score={session.presenceScore?.signals?.geofence?.score} />
+                            <SignalMeter label="LOC" score={session.presenceScore?.signals?.locationConsistency?.score} />
+                            <SignalMeter label="DEV" score={session.presenceScore?.signals?.deviceActivity?.score} />
+                            <SignalMeter label="MOT" score={session.presenceScore?.signals?.motionPattern?.score} />
+                            <SignalMeter label="FAC" score={session.presenceScore?.signals?.faceIdentity?.score} />
                           </div>
                         </td>
                         <td style={{ textAlign: 'right' }}>
