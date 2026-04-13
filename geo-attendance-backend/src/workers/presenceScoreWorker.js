@@ -1,6 +1,7 @@
 const cron = require('node-cron');
 const AttendanceModel = require('../models/attendance');
 const PresenceEngineService = require('../services/presenceEngineService');
+const SuspicionDetectionService = require('../services/suspicionDetectionService');
 
 /**
  * Background worker to calculate presence scores periodically
@@ -84,7 +85,29 @@ class PresenceScoreWorker {
           if (result.status === 'on_leave') {
             console.log(`⏭️  ${session.userId}: Skipped (on approved leave)`);
           } else {
-            console.log(`✅ ${session.userId}: Score ${result.summary?.totalScore}, Confidence: ${result.summary?.confidence}`);
+            const { totalScore, riskLevel, confidence } = result.summary || {};
+            console.log(`✅ ${session.userId}: Score ${totalScore}, Confidence: ${confidence}, Risk: ${riskLevel}`);
+
+            // 🚨 Auto-flag high-risk sessions with very low scores
+            if (riskLevel === 'high' && totalScore < 30) {
+              await AttendanceModel.findByIdAndUpdate(session._id, {
+                status: 'flagged',
+                remarks: `Auto-flagged by PresenceEngine: score=${totalScore}, risk=${riskLevel}`
+              });
+              console.log(`🚨 [Worker] Session ${session._id} auto-flagged (score=${totalScore}, risk=high)`);
+
+              // Also run the suspicion service to append specific reasons
+              try {
+                const suspicion = await SuspicionDetectionService.analyzeSuspicion(session._id, session.userId);
+                if (suspicion.reasons.length > 0) {
+                  await AttendanceModel.findByIdAndUpdate(session._id, {
+                    remarks: `Auto-flagged: score=${totalScore} | ${suspicion.reasons.join(', ')}`
+                  });
+                }
+              } catch (sErr) {
+                console.error(`⚠️ [Worker] Suspicion analysis failed for ${session._id}:`, sErr.message);
+              }
+            }
           }
           successCount++;
 

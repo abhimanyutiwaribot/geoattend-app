@@ -23,8 +23,7 @@ adminRoutes.get("/dashboard", requirePermission("canViewReports"), async (req, r
             totalUsers,
             activeSessions,
             todayAttendances,
-            suspiciousActivities,
-            recentChallenges
+            suspiciousActivities
         ] = await Promise.all([
             User.countDocuments(),
             Attendance.countDocuments({ status: { $in: ["tentative", "confirmed"] } }),
@@ -172,6 +171,8 @@ adminRoutes.get("/attendances", requirePermission("canViewReports"), async (req,
 });
 
 // 🚨 SUSPICIOUS ACTIVITIES
+const PresenceScore = require('../models/presenceScore');
+
 adminRoutes.get("/suspicious-activities", requirePermission("canViewSuspicious"), async (req, res) => {
     try {
         const { page = 1, limit = 20 } = req.query;
@@ -187,11 +188,29 @@ adminRoutes.get("/suspicious-activities", requirePermission("canViewSuspicious")
             .limit(limit * 1)
             .skip((page - 1) * limit);
 
+        // Enrich each record with its latest PresenceScore (flags + riskLevel)
+        const enriched = await Promise.all(
+            suspiciousAttendances.map(async (att) => {
+                const latest = await PresenceScore.findOne({ attendanceId: att._id })
+                    .sort({ timestamp: -1 })
+                    .select('totalScore confidence riskLevel flags signals timestamp');
+                return {
+                    ...att.toObject(),
+                    presenceScore: latest || null
+                };
+            })
+        );
+
+        // Count high-risk sessions among the results
+        const highRiskCount = enriched.filter(
+            r => r.presenceScore?.riskLevel === 'high'
+        ).length;
 
         res.json({
             success: true,
             data: {
-                suspiciousAttendances,
+                suspiciousAttendances: enriched,
+                highRiskCount,
                 lastUpdated: new Date()
             }
         });
@@ -303,52 +322,82 @@ adminRoutes.put("/users/:userId/assign-office", requirePermission("canManageUser
     }
 });
 
-// 📈 REPORTS GENERATION
+// 📈 ATTENDANCE REPORT — record-level (one row per session)
+// GET /admin/reports/employees — employee list for filter dropdown
+adminRoutes.get("/reports/employees", requirePermission("canViewReports"), async (req, res) => {
+    try {
+        const employees = await User.find({ isActive: { $ne: false } })
+            .select("name email")
+            .sort({ name: 1 });
+        res.json({ success: true, data: { employees } });
+    } catch (error) {
+        res.status(500).json({ success: false, message: "Error fetching employees" });
+    }
+});
+
+// POST /admin/reports/generate — detailed attendance sessions
 adminRoutes.post("/reports/generate", requirePermission("canViewReports"), async (req, res) => {
     try {
-        const { type, startDate, endDate } = req.body;
+        const { startDate, endDate, userId } = req.body;
 
-        let reportData = {};
-
-        switch (type) {
-            case "daily_attendance":
-                reportData = await generateDailyAttendanceReport(startDate, endDate);
-                break;
-            case "suspicious_activity":
-                reportData = await generateSuspiciousActivityReport(startDate, endDate);
-                break;
-            case "user_analytics":
-                reportData = await generateUserAnalyticsReport(startDate, endDate);
-                break;
-            default:
-                return res.status(400).json({
-                    success: false,
-                    message: "Invalid report type"
-                });
+        if (!startDate || !endDate) {
+            return res.status(400).json({ success: false, message: "startDate and endDate are required" });
         }
+
+        // Build date range (endDate is inclusive — extend to end of day)
+        const start = new Date(startDate);
+        const end = new Date(endDate);
+        end.setHours(23, 59, 59, 999);
+
+        const query = {
+            startTime: { $gte: start, $lte: end }
+        };
+        if (userId) query.userId = userId;
+
+        const sessions = await Attendance.find(query)
+            .populate("userId", "name email")
+            .sort({ startTime: -1 })
+            .limit(1000); // safety cap
+
+        // Shape into clean report rows
+        const rows = sessions.map(s => ({
+            employeeName: s.userId?.name || "Unknown",
+            employeeEmail: s.userId?.email || "",
+            date: s.startTime ? s.startTime.toISOString().split("T")[0] : "",
+            inTime: s.startTime || null,
+            outTime: s.endTime || null,
+            duration: s.totalDuration ? Math.round(s.totalDuration) : null, // minutes
+            status: s.status,
+            validationScore: s.validationScore ?? null,
+        }));
+
+        // Summary stats
+        const totalSessions = rows.length;
+        const completedRows = rows.filter(r => r.duration !== null);
+        const avgDuration = completedRows.length > 0
+            ? Math.round(completedRows.reduce((sum, r) => sum + r.duration, 0) / completedRows.length)
+            : 0;
+        const flaggedCount = rows.filter(r => r.status === "flagged").length;
 
         res.json({
             success: true,
             data: {
                 report: {
-                    type,
                     dateRange: { startDate, endDate },
                     generatedAt: new Date(),
-                    data: reportData
+                    summary: { totalSessions, avgDuration, flaggedCount },
+                    rows
                 }
             }
         });
 
     } catch (error) {
         console.error("Report generation error:", error);
-        res.status(500).json({
-            success: false,
-            message: "Error generating report"
-        });
+        res.status(500).json({ success: false, message: "Error generating report" });
     }
 });
 
-// Helper functions for reports
+// ── Legacy helper stubs (kept to avoid import errors if anything references them) ──
 async function generateDailyAttendanceReport(startDate, endDate) {
     const attendanceData = await Attendance.aggregate([
         {

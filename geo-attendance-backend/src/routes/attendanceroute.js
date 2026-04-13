@@ -263,6 +263,25 @@ attendanceRouter.post("/end", authMiddleware, async function (req, res) {
 
         await attendance.save();
 
+        // 🔍 Run suspicion analysis on the completed session
+        try {
+            const suspicion = await suspicionDetectionService.analyzeSuspicion(attendance._id, attendance.userId);
+            console.log(`🔍 [Suspicion] Score: ${suspicion.suspicionScore}, Suspicious: ${suspicion.isSuspicious}`);
+
+            if (suspicion.isSuspicious) {
+                const suspicionNote = `Flagged: ${suspicion.reasons.join(', ')}`;
+                attendance.status = 'flagged';
+                attendance.remarks = attendance.remarks
+                    ? `${attendance.remarks} | ${suspicionNote}`
+                    : suspicionNote;
+                await attendance.save();
+                console.log(`🚨 [Suspicion] Session ${attendance._id} flagged for User ${attendance.userId}`);
+            }
+        } catch (suspicionErr) {
+            // Non-fatal — log but don't block checkout
+            console.error('⚠️ [Suspicion] Analysis failed (non-fatal):', suspicionErr.message);
+        }
+
         res.json({
             success: true,
             message: "attendance session ended",
