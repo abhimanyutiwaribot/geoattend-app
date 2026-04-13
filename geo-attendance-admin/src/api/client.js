@@ -58,6 +58,7 @@ export const api = {
 
   // Reports
   generateReport: (data) => apiClient.post(`${API_PREFIX}/admin/reports/generate`, data),
+  getEmployees: () => apiClient.get(`${API_PREFIX}/admin/reports/employees`),
 
   // Suspicious Activities
   getSuspiciousActivities: (params) =>
