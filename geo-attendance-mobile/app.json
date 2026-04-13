@@ -13,7 +13,12 @@
       "backgroundColor": "#ffffff"
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.geoattendmobile",
+      "infoPlist": {
+        "NSCameraUsageDescription": "Allow $(PRODUCT_NAME) to access your camera for identity verification.",
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -39,7 +44,7 @@
     ],
     "extra": {
       "eas": {
-        "projectId": "7c488518-ff4f-4205-8d8f-8dd32d38b56c"
+        "projectId": "your-project-id"
       }
     }
   }
